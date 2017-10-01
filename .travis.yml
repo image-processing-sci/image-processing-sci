@@ -7,4 +7,3 @@ python:
     - 2.7
 notifications:
     slack: gatech-sci:epqI4DY40VX4DaTdyUemo1ld
-script: make test
