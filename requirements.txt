@@ -1,2 +1,6 @@
 Flask
 Redis
+tensorflow
+numpy
+opencv-python
+tensorflow-gpu
