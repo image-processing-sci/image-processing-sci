@@ -99,3 +99,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+outputs/
+.DS_Store
+big_files/
