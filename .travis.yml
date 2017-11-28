@@ -1,0 +1,16 @@
+language: python
+
+python:
+  - 2.7
+
+install:
+  - pip install codecov
+
+script:
+  - coverage run tests.py
+
+after_success:
+  - codecov
+
+notifications:
+    slack: gatech-sci:epqI4DY40VX4DaTdyUemo1ld
