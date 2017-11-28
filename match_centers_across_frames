@@ -1,0 +1,2 @@
+def match_centers_across_frames(current_frame_centers, previous_frame_centers):
+    return 5
