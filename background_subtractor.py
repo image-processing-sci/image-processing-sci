@@ -4,49 +4,77 @@ import numpy as np
 from transformation import transform
 
 def calc_euclidean_distance(current_center, previous_center):
-    x1, y1 = current_center
-    x2, y2 = previous_center
-    return ((x1 - x2) ** 2 + (y2 - y1) ** 2) ** 0.5
+    try:
+        x1, y1 = current_center
+        x2, y2 = previous_center
+        return ((x1 - x2) ** 2 + (y2 - y1) ** 2) ** 0.5
+    except:
+        import ipdb; ipdb.set_trace()
+        return None
 
 
-def match_centers_across_frames(current_frame_centers, previous_frame_centers, FRAMES_FOR_SPEED, SCALING_FACTOR):
-    return_map = dict.fromkeys(range(len(current_frame_centers)))
 
-    parametrized_direction = None
+def match_centers_across_frames(raw_current_frame_centers, raw_previous_frame_centers, transformed_current_frame_centers, transformed_previous_frame_centers, FRAMES_FOR_SPEED, SPEED_SCALING_FACTOR):
+    # import ipdb; ipdb.set_trace()
+    if len(transformed_current_frame_centers) == 0 or len(transformed_previous_frame_centers) == 0 or len(raw_current_frame_centers) == 0:
+        return {}
 
-    for i in range(len(current_frame_centers)):
+
+    numCurrent = len(transformed_current_frame_centers[0])
+    numPrev = len(transformed_previous_frame_centers[0])
+    center_correspondence_map = dict.fromkeys(range(numCurrent))
+    exhausted_centers = set([])
+    raw_parametrized_direction = None
+    transformed_parametrized_direction = None
+
+    for i in range(numCurrent):
         # start distance at inf
         curr_min_dist = float('inf')
-        index_to_pop = None
-        for j in range(len(previous_frame_centers)):
-            # get euclidean distance
-            distance = calc_euclidean_distance(current_frame_centers[i], previous_frame_centers[j])
+        exhausted_center_index = None
+        for j in range(numPrev):
+            if j != exhausted_center_index:
+                # get euclidean distance
+                distance = calc_euclidean_distance(transformed_current_frame_centers[0][i], transformed_previous_frame_centers[0][j])
 
-            if curr_min_dist > distance:
-                curr_min_dist = distance
-                index_to_pop = j
-                x1, y1 = current_frame_centers[i]
-                x2, y2 = previous_frame_centers[j]
-                parametrized_direction = (x1 - x2, y1 - y2)
+                if curr_min_dist > distance:
+                    curr_min_dist = distance
+                    exhausted_center_index = j
 
-        if index_to_pop:
-            previous_frame_centers.pop(index_to_pop)
-        #TODO: Apply scaling factor
-        return_map[i] = (current_frame_centers[i], curr_min_dist * 30.0/FRAMES_FOR_SPEED * SCALING_FACTOR, parametrized_direction)  # this is the speed in pixels per second
-    return return_map
+                    xRc, yRc = raw_current_frame_centers[0][i]
+                    xRp, yRp = raw_previous_frame_centers[0][j]
+                    raw_parametrized_direction = (xRc - xRp, yRc - yRp)
+
+                    xTc, yTc = transformed_current_frame_centers[0][i]
+                    xTp, yTp = transformed_previous_frame_centers[0][j]
+                    transformed_parametrized_direction = (xTc - xTp, yTc - yTp)
 
 
-def showBirdsEyeCenters(centers, transformation_matrix):
+        #TODO: Apply scaling factor to adjust speed
+        center_correspondence_map[i] = (raw_current_frame_centers[0][i], transformed_current_frame_centers[0][i], curr_min_dist * 30.0/FRAMES_FOR_SPEED * SPEED_SCALING_FACTOR, raw_parametrized_direction, transformed_parametrized_direction)  # this is the speed in pixels per second
+
+        # remove the center from the remaining previous_frame_center candidates
+        if exhausted_center_index:
+            # transformed_previous_frame_centers.pop(exhausted_center_index)
+            exhausted_centers.add(exhausted_center_index)
+
+    return center_correspondence_map
+
+
+def transformToBirdsEye(raw_centers, transformation_matrix, preview = False):
     # generate output canvas
-    output = np.zeros((2000, 2000))
     # apply t_mat to the centers
-    centers = cv2.perspectiveTransform(np.array([centers], dtype=float), transformation_matrix)
-    # draw transformed centroids onto cangas
-    for x, y in centers[0]:
-        # output[x,y] = 255
-        cv2.circle(output, (int(x), int(y)), 20, (255, 255, 255), -1)
+    if not raw_centers:
+        return []
+    transformed_centers = cv2.perspectiveTransform(np.array([raw_centers], dtype=float), transformation_matrix)
+    return transformed_centers
 
-    cv2.imshow('birds-eye', output)
+    # if preview:
+    #     # draw transformed centroids onto cangas
+    #     output = np.zeros((2000, 2000))
+    #     for x, y in centers[0]:
+    #         cv2.circle(output, (int(x), int(y)), 20, (255, 255, 255), -1)
+    #     cv2.imshow('birds-eye', output)
+
 
 def main():
 
@@ -71,7 +99,7 @@ def main():
     background = cv2.imread('big_files/background.png', 0)
     # background = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
     FRAMES_FOR_SPEED = 1
-    SCALING_FACTOR = 1.0
+    SPEED_SCALING_FACTOR = 0.06818181804 # miles per hour
 
     # open transformation calibration checkerboard image
     checkerboard_image = cv2.imread('betterCheckb.png')
@@ -79,7 +107,8 @@ def main():
     transformation_matrix, _ = transform(checkerboard_image)
 
     # keep a cache of the previous frame centers
-    previous_frame_centers = []
+    transformed_previous_frame_centers = []
+    raw_previous_frame_centers = []
     frame_count = 0
 
     # loop through frames of video
@@ -102,7 +131,7 @@ def main():
                 im2, cnts, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
                 blob_area_threshold = 700 # minimum size of blob in order to be considered a vehicle
-                current_frame_centers = []  # will contain a list of the circle coordinates
+                raw_current_frame_centers = []  # will contain a list of the centroids of moving vehicles on raw footage
 
                 # import ipdb; ipdb.set_trace()
 
@@ -119,35 +148,44 @@ def main():
 
                             centers_xy_coordinates = (cX, cY)
                             if frame_count % FRAMES_FOR_SPEED == 0:
-                                current_frame_centers.append(centers_xy_coordinates)
+                                raw_current_frame_centers.append(centers_xy_coordinates)
 
                             # draw the contour and center of the shape on the image
-                            cv2.drawContours(img, [c], -1, (0, 255, 0), 2)
-                            cv2.circle(img, (cX, cY), 7, (0, 255, 0), -1)
+                            cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
+                            cv2.circle(img, (cX, cY), 7, (0, 0, 204), -1)
+                    transformed_current_frame_centers = transformToBirdsEye(raw_current_frame_centers, transformation_matrix)
                 # do this for every FRAMES_FOR_SPEED frames.
-                # np_current_frame_centers = np.array(current_frame_centers)
-                # np_previous_frame_centers = np.array(previous_frame_centers)
-                # np_current_frame_centers.searchsorted(np_previous_frame_centers, side='right')
 
-                current_frame_centers.sort(key=lambda x: -x[1])
-                previous_frame_centers.sort(key=lambda x: -x[1])  # sort the centers by closest to camera (bottom of the frame)
-                car_map = match_centers_across_frames(current_frame_centers,
-                                                    previous_frame_centers,
+                # current_frame_centers.sort(key=lambda x: -x[1])
+                # previous_frame_centers.sort(key=lambda x: -x[1])  # sort the centers by closest to camera (bottom of the frame)
+                car_map = match_centers_across_frames([raw_current_frame_centers],
+                                                    [raw_previous_frame_centers],
+                                                    transformed_current_frame_centers,
+                                                    transformed_previous_frame_centers,
                                                     FRAMES_FOR_SPEED,
-                                                    SCALING_FACTOR)  # need to return velocities of vehicles (speed + direction)
-                # print(car_map)
+                                                    SPEED_SCALING_FACTOR)  # need to return velocities of vehicles (speed + direction)
+
+                # put velocities on the original image
                 for key in car_map:
-                    center, speed, parametrized_direction = car_map[key]
-                    cX, cY = center
+                    raw_center, transformed_center, speed, raw_parametrized_direction, transformed_parametrized_direction = car_map[key]
+                    cX, cY = raw_center
+                    p_dX, p_dY = raw_parametrized_direction
+
                     if speed != float('inf'):
-                        cv2.putText(img, str(round(speed)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                        cv2.putText(img, "{0} mph".format(round(speed)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
+                        try:
+                            cv2.arrowedLine(img, (cX, cY), (int(cX + p_dX), int(cY + p_dY)), (0,0,100),2)
+                        except:
+                            import ipdb; ipdb.set_trace()
+                        # cv2.line(img, (cX, cY), (cX + p_dX, cY + p_dY), (0,0,255),4)
                     else:
-                        cv2.putText(img, str('NaN'), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                previous_frame_centers = current_frame_centers
+                        cv2.putText(img, str('NaN'), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
+                transformed_previous_frame_centers = transformed_current_frame_centers
+                raw_previous_frame_centers = raw_current_frame_centers
 
             cv2.imshow("original footage with blob/centroid", img)
 
-            showBirdsEyeCenters(current_frame_centers, transformation_matrix)
+            # transformToBirdsEye(current_frame_centers, transformation_matrix, preview = True)
 
 
             frame_count += 1
