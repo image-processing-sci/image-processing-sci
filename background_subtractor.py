@@ -116,7 +116,11 @@ def main():
         # capture current frame in video
         ret, img = capture.read()
         if ret == True:
+
             if frame_count % FRAMES_FOR_SPEED == 0:
+
+                transformed_output = np.zeros((2000, 2000))
+
                 imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 # transformed_image = transform(imgray)
                 # use the background subtractor
@@ -154,6 +158,11 @@ def main():
                             cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
                             cv2.circle(img, (cX, cY), 7, (0, 0, 204), -1)
                     transformed_current_frame_centers = transformToBirdsEye(raw_current_frame_centers, transformation_matrix)
+                    # EXPERIMENTAL
+                    if len(transformed_current_frame_centers) > 0:
+                        for x, y in transformed_current_frame_centers[0]:
+                            cv2.circle(transformed_output, (int(x), int(y)), 10, (255, 255, 255), -1)
+
                 # do this for every FRAMES_FOR_SPEED frames.
 
                 # current_frame_centers.sort(key=lambda x: -x[1])
@@ -168,25 +177,23 @@ def main():
                 # put velocities on the original image
                 for key in car_map:
                     raw_center, transformed_center, speed, raw_parametrized_direction, transformed_parametrized_direction = car_map[key]
-                    cX, cY = raw_center
-                    p_dX, p_dY = raw_parametrized_direction
+                    r_cX, r_cY = raw_center
+                    r_Dx, r_Dy = raw_parametrized_direction
+                    t_cX, t_cY = transformed_center
+                    t_Dx, t_Dy = transformed_parametrized_direction
 
                     if speed != float('inf'):
-                        cv2.putText(img, "{0} mph".format(round(speed)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
-                        try:
-                            cv2.arrowedLine(img, (cX, cY), (int(cX + p_dX), int(cY + p_dY)), (0,0,100),2)
-                        except:
-                            import ipdb; ipdb.set_trace()
-                        # cv2.line(img, (cX, cY), (cX + p_dX, cY + p_dY), (0,0,255),4)
-                    else:
-                        cv2.putText(img, str('NaN'), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
+                        cv2.putText(img, "{0} mph".format(round(speed)), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
+                        cv2.arrowedLine(img, (r_cX, r_cY), (int(r_cX + r_Dx), int(r_cY + r_Dy)), (0,0,100),2)
+                        cv2.arrowedLine(transformed_output, (int(t_cX), int(t_cY)), (int(t_cX + t_Dx), int(t_cY + t_Dy)), (255,255,255),2)
+
+                    # else:
+                    #     cv2.putText(img, str('NaN'), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
                 transformed_previous_frame_centers = transformed_current_frame_centers
                 raw_previous_frame_centers = raw_current_frame_centers
 
             cv2.imshow("original footage with blob/centroid", img)
-
-            # transformToBirdsEye(current_frame_centers, transformation_matrix, preview = True)
-
+            cv2.imshow('birds-eye', transformed_output)
 
             frame_count += 1
 
