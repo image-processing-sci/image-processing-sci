@@ -2,23 +2,26 @@ import cv2
 import os
 import numpy as np
 from transformation import transform
+import matplotlib.pyplot as plt
+
+FRAMES_FOR_SPEED = 1
+SPEED_SCALING_FACTOR = 0.06818181804  # miles per hour
+MIN_CENTROID_Y = 0
+MAX_CENTROID_Y = 800
+MILES_PER_160_FEET = 0.030303
 
 def calc_euclidean_distance(current_center, previous_center):
-    try:
-        x1, y1 = current_center
-        x2, y2 = previous_center
-        return ((x1 - x2) ** 2 + (y2 - y1) ** 2) ** 0.5
-    except:
-        import ipdb; ipdb.set_trace()
-        return None
+    x1, y1 = current_center
+    x2, y2 = previous_center
+    return ((x1 - x2) ** 2 + (y2 - y1) ** 2) ** 0.5
 
+def get_density_of_cars(centers):
+     return len(centers)/MILES_PER_160_FEET
 
-
-def match_centers_across_frames(raw_current_frame_centers, raw_previous_frame_centers, transformed_current_frame_centers, transformed_previous_frame_centers, FRAMES_FOR_SPEED, SPEED_SCALING_FACTOR):
+def match_centers_across_frames(raw_current_frame_centers, raw_previous_frame_centers, transformed_current_frame_centers, transformed_previous_frame_centers):
     # import ipdb; ipdb.set_trace()
     if len(transformed_current_frame_centers) == 0 or len(transformed_previous_frame_centers) == 0 or len(raw_current_frame_centers) == 0:
         return {}
-
 
     numCurrent = len(transformed_current_frame_centers[0])
     numPrev = len(transformed_previous_frame_centers[0])
@@ -43,11 +46,9 @@ def match_centers_across_frames(raw_current_frame_centers, raw_previous_frame_ce
                     xRc, yRc = raw_current_frame_centers[0][i]
                     xRp, yRp = raw_previous_frame_centers[0][j]
                     raw_parametrized_direction = (xRc - xRp, yRc - yRp)
-
                     xTc, yTc = transformed_current_frame_centers[0][i]
                     xTp, yTp = transformed_previous_frame_centers[0][j]
                     transformed_parametrized_direction = (xTc - xTp, yTc - yTp)
-
 
         #TODO: Apply scaling factor to adjust speed
         center_correspondence_map[i] = (raw_current_frame_centers[0][i], transformed_current_frame_centers[0][i], curr_min_dist * 30.0/FRAMES_FOR_SPEED * SPEED_SCALING_FACTOR, raw_parametrized_direction, transformed_parametrized_direction)  # this is the speed in pixels per second
@@ -99,11 +100,6 @@ def main():
     background = cv2.imread('big_files/background.png', 0)
 
     # background = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
-    FRAMES_FOR_SPEED = 1
-    SPEED_SCALING_FACTOR = 0.06818181804 # miles per hour
-    MIN_CENTROID_Y = 375
-    MAX_CENTROID_Y = 800
-
 
     # open transformation calibration checkerboard image
     checkerboard_image = cv2.imread('betterCheckb.png')
@@ -133,6 +129,7 @@ def main():
                 imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 # transformed_image = transform(imgray)
                 # use the background subtractor
+                fgbg.apply(background)
                 fgmask = fgbg.apply(imgray)
 
                 # Pre processing, which includes blurring the image and thresholding
@@ -185,9 +182,7 @@ def main():
                 car_map = match_centers_across_frames([raw_current_frame_centers],
                                                     [raw_previous_frame_centers],
                                                     transformed_current_frame_centers,
-                                                    transformed_previous_frame_centers,
-                                                    FRAMES_FOR_SPEED,
-                                                    SPEED_SCALING_FACTOR)  # need to return velocities of vehicles (speed + direction)
+                                                    transformed_previous_frame_centers)  # need to return velocities of vehicles (speed + direction)
 
                 # put velocities on the original image
                 for key in car_map:
