@@ -2,6 +2,7 @@ import cv2
 import os
 import numpy as np
 from transformation import transform
+import matplotlib.pyplot as plt
 
 # Open the video
 capture = cv2.VideoCapture('big_files/final.mp4')
@@ -25,6 +26,7 @@ background = cv2.imread('big_files/background.png')
 background = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
 FRAMES_FOR_SPEED = 1
 SCALING_FACTOR = 0.06818181804 #miles/pixel
+MILES_PER_160_FEET = 0.030303
 
 checkerboard_image = cv2.imread('betterCheckb.png')
 transformation_matrix, _ = transform(checkerboard_image)
@@ -94,6 +96,8 @@ def showBirdsEyeCenters(centers):
     # output = cv2.warpPerspective(img, tMat, (tW, tH))
     return centers
 
+def get_density_of_cars(centers):
+    return len(centers)/MILES_PER_160_FEET
 
 while True:
     # capture frame in video
