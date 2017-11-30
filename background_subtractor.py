@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 FRAMES_FOR_SPEED = 1
 SPEED_SCALING_FACTOR = 0.06818181804  # miles per hour
-MIN_CENTROID_Y = 375
+MIN_CENTROID_Y = 0
 MAX_CENTROID_Y = 800
 MILES_PER_160_FEET = 0.030303
 
@@ -129,6 +129,7 @@ def main():
                 imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 # transformed_image = transform(imgray)
                 # use the background subtractor
+                fgbg.apply(background)
                 fgmask = fgbg.apply(imgray)
 
                 # Pre processing, which includes blurring the image and thresholding
