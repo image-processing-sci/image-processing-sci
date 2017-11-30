@@ -98,17 +98,21 @@ def main():
     # background image we're doing right
     background = cv2.imread('big_files/background.png', 0)
 
-    # background = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
     FRAMES_FOR_SPEED = 1
     SPEED_SCALING_FACTOR = 0.06818181804 # miles per hour
     MIN_CENTROID_Y = 375
     MAX_CENTROID_Y = 800
+    LANE_LINES = [880, 1000, 1120]
 
 
     # open transformation calibration checkerboard image
     checkerboard_image = cv2.imread('betterCheckb.png')
     # calculate transformation matrix
     transformation_matrix, _ = transform(checkerboard_image)
+    transformed_background = cv2.warpPerspective(background, transformation_matrix, (2000, 2000))
+    for l in LANE_LINES:
+        cv2.line(transformed_background, (l, 0), (l, 2000), (0, 0, 0), 3)
+    # cv2.imshow("transformed_bg", transformed_background)
 
     # keep a cache of the previous frame centers
     transformed_previous_frame_centers = []
@@ -117,7 +121,7 @@ def main():
 
     # preview settings
     bird_eye_preview = True
-    blob_preview = True
+    blob_preview = False
 
     # loop through frames of video
     while True:
@@ -128,7 +132,9 @@ def main():
             if frame_count % FRAMES_FOR_SPEED == 0:
 
                 # birds-eye
-                if bird_eye_preview: transformed_output = np.zeros((2000, 2000))
+                if bird_eye_preview:
+                    transformed_output = transformed_background.copy()
+
 
                 imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 # transformed_image = transform(imgray)
@@ -171,12 +177,17 @@ def main():
                                 # draw the contour and center of the shape on the image
                                 cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
                                 cv2.circle(img, (cX, cY), 7, (0, 0, 204), -1)
-                    transformed_current_frame_centers = transformToBirdsEye(raw_current_frame_centers, transformation_matrix)
 
-                    # birds-eye
-                    if bird_eye_preview and len(transformed_current_frame_centers) > 0:
-                        for x, y in transformed_current_frame_centers[0]:
-                            cv2.circle(transformed_output, (int(x), int(y)), 10, (255, 255, 255), -1)
+                temp_transform = transformToBirdsEye(raw_current_frame_centers, transformation_matrix)
+                temp_transform = temp_transform[0]
+                temp_transform = temp_transform[np.logical_and(temp_transform[:,0] >= LANE_LINES[0], temp_transform[:,0] <= LANE_LINES[-1])]
+
+                transformed_current_frame_centers = np.array([temp_transform])
+
+                # birds-eye
+                if bird_eye_preview and len(transformed_current_frame_centers) > 0:
+                    for x, y in transformed_current_frame_centers[0]:
+                        cv2.circle(transformed_output, (int(x), int(y)), 10, (0, 0, 0), -1)
 
                 # do this for every FRAMES_FOR_SPEED frames.
 
@@ -202,7 +213,7 @@ def main():
                         cv2.putText(img, "{0} mph".format(round(speed)), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
                         cv2.arrowedLine(img, (r_cX, r_cY), (int(r_cX + r_Dx), int(r_cY + r_Dy)), (0,0,100),2)
                         # birds-eye
-                        if bird_eye_preview: cv2.arrowedLine(transformed_output, (int(t_cX), int(t_cY)), (int(t_cX + t_Dx), int(t_cY + t_Dy)), (255,255,255),2)
+                        if bird_eye_preview: cv2.arrowedLine(transformed_output, (int(t_cX), int(t_cY)), (int(t_cX + t_Dx), int(t_cY + t_Dy)), (0,0,0),2)
 
                     # else:
                     #     cv2.putText(img, str('NaN'), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
