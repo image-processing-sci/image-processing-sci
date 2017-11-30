@@ -97,9 +97,13 @@ def main():
 
     # background image we're doing right
     background = cv2.imread('big_files/background.png', 0)
+
     # background = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
     FRAMES_FOR_SPEED = 1
     SPEED_SCALING_FACTOR = 0.06818181804 # miles per hour
+    MIN_CENTROID_Y = 375
+    MAX_CENTROID_Y = 800
+
 
     # open transformation calibration checkerboard image
     checkerboard_image = cv2.imread('betterCheckb.png')
@@ -111,6 +115,10 @@ def main():
     raw_previous_frame_centers = []
     frame_count = 0
 
+    # preview settings
+    bird_eye_preview = True
+    blob_preview = True
+
     # loop through frames of video
     while True:
         # capture current frame in video
@@ -119,7 +127,8 @@ def main():
 
             if frame_count % FRAMES_FOR_SPEED == 0:
 
-                transformed_output = np.zeros((2000, 2000))
+                # birds-eye
+                if bird_eye_preview: transformed_output = np.zeros((2000, 2000))
 
                 imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 # transformed_image = transform(imgray)
@@ -127,9 +136,13 @@ def main():
                 fgmask = fgbg.apply(imgray)
 
                 # Pre processing, which includes blurring the image and thresholding
-                threshold = 30
+                threshold = 10
+
                 fgmask = cv2.GaussianBlur(fgmask, (25, 25), 0)
                 ret, thresh = cv2.threshold(fgmask, threshold, 255, cv2.THRESH_BINARY)
+
+
+                if blob_preview: cv2.imshow('blobs', thresh)
 
                 # Get the contours for the thresholded image
                 im2, cnts, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -144,6 +157,7 @@ def main():
                     area = cv2.contourArea(c)  # getting blob area to threshold
                     # compute the center of the contour
                     if area > blob_area_threshold:
+                        # import ipdb; ipdb.set_trace()
                         M = cv2.moments(c)
                         # prevent divide by zer0
                         if M["m00"] != 0.0:
@@ -151,15 +165,16 @@ def main():
                             cY = int(M["m01"] / M["m00"])
 
                             centers_xy_coordinates = (cX, cY)
-                            if frame_count % FRAMES_FOR_SPEED == 0:
+                            if cY > MIN_CENTROID_Y and cY < MAX_CENTROID_Y:
                                 raw_current_frame_centers.append(centers_xy_coordinates)
 
-                            # draw the contour and center of the shape on the image
-                            cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
-                            cv2.circle(img, (cX, cY), 7, (0, 0, 204), -1)
+                                # draw the contour and center of the shape on the image
+                                cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
+                                cv2.circle(img, (cX, cY), 7, (0, 0, 204), -1)
                     transformed_current_frame_centers = transformToBirdsEye(raw_current_frame_centers, transformation_matrix)
-                    # EXPERIMENTAL
-                    if len(transformed_current_frame_centers) > 0:
+
+                    # birds-eye
+                    if bird_eye_preview and len(transformed_current_frame_centers) > 0:
                         for x, y in transformed_current_frame_centers[0]:
                             cv2.circle(transformed_output, (int(x), int(y)), 10, (255, 255, 255), -1)
 
@@ -183,9 +198,11 @@ def main():
                     t_Dx, t_Dy = transformed_parametrized_direction
 
                     if speed != float('inf'):
+                        # cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
                         cv2.putText(img, "{0} mph".format(round(speed)), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
                         cv2.arrowedLine(img, (r_cX, r_cY), (int(r_cX + r_Dx), int(r_cY + r_Dy)), (0,0,100),2)
-                        cv2.arrowedLine(transformed_output, (int(t_cX), int(t_cY)), (int(t_cX + t_Dx), int(t_cY + t_Dy)), (255,255,255),2)
+                        # birds-eye
+                        if bird_eye_preview: cv2.arrowedLine(transformed_output, (int(t_cX), int(t_cY)), (int(t_cX + t_Dx), int(t_cY + t_Dy)), (255,255,255),2)
 
                     # else:
                     #     cv2.putText(img, str('NaN'), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
@@ -193,7 +210,9 @@ def main():
                 raw_previous_frame_centers = raw_current_frame_centers
 
             cv2.imshow("original footage with blob/centroid", img)
-            cv2.imshow('birds-eye', transformed_output)
+            # birds-eye
+            if bird_eye_preview: cv2.imshow('birds-eye', transformed_output)
+
 
             frame_count += 1
 
