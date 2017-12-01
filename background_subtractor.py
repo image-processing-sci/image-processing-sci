@@ -202,58 +202,70 @@ def main():
 
 
 # ###################################################
-                                # TODO: delete current behavior for all vehicles
-                                raw_current_frame_centers.append(raw_center)
-                                transformed_current_frame_centers.append([t_cX, t_cY])
+                #                 # TODO: delete current behavior for all vehicles
+                #                 raw_current_frame_centers.append(raw_center)
+                #                 transformed_current_frame_centers.append([t_cX, t_cY])
 
-                                # draw the contour and center of the shape on the image
-                                cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
-                                cv2.circle(img, (r_cX, r_cY), 7, (0, 0, 204), -1)
+                #                 # draw the contour and center of the shape on the image
+                #                 cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
+                #                 cv2.circle(img, (r_cX, r_cY), 7, (0, 0, 204), -1)
 
-                                # separate into new vehicles
-                transformed_current_frame_centers = np.array([transformed_current_frame_centers])
+                #                 # separate into new vehicles
+                # transformed_current_frame_centers = np.array([transformed_current_frame_centers])
 
-                # birds-eye
-                if bird_eye_preview and len(transformed_current_frame_centers) > 0:
-                    for x, y in transformed_current_frame_centers[0]:
-                        cv2.circle(transformed_output, (int(x), int(y)), 10, (0, 0, 0), -1)
+                # # birds-eye
+                # if bird_eye_preview and len(transformed_current_frame_centers) > 0:
+                #     for x, y in transformed_current_frame_centers[0]:
+                #         cv2.circle(transformed_output, (int(x), int(y)), 10, (0, 0, 0), -1)
 
-                car_map = match_centers_across_frames([raw_current_frame_centers],
-                                                    [raw_previous_frame_centers],
-                                                    transformed_current_frame_centers,
-                                                    transformed_previous_frame_centers,
-                                                    FRAMES_FOR_SPEED,
-                                                    SPEED_SCALING_FACTOR)  # need to return velocities of vehicles (speed + direction)
+                # car_map = match_centers_across_frames([raw_current_frame_centers],
+                #                                     [raw_previous_frame_centers],
+                #                                     transformed_current_frame_centers,
+                #                                     transformed_previous_frame_centers,
+                #                                     FRAMES_FOR_SPEED,
+                #                                     SPEED_SCALING_FACTOR)  # need to return velocities of vehicles (speed + direction)
 
-                # put velocities on the original image
-                for key in car_map:
-                    if car_map[key] == None: continue
-                    raw_center, transformed_center, speed, raw_parametrized_direction, transformed_parametrized_direction = car_map[key]
-                    r_cX, r_cY = raw_center
-                    r_Dx, r_Dy = raw_parametrized_direction
-                    t_cX, t_cY = transformed_center
-                    t_Dx, t_Dy = transformed_parametrized_direction
+                # # put velocities on the original image
+                # for key in car_map:
+                #     if car_map[key] == None: continue
+                #     raw_center, transformed_center, speed, raw_parametrized_direction, transformed_parametrized_direction = car_map[key]
+                #     r_cX, r_cY = raw_center
+                #     r_Dx, r_Dy = raw_parametrized_direction
+                #     t_cX, t_cY = transformed_center
+                #     t_Dx, t_Dy = transformed_parametrized_direction
 
-                    if speed != float('inf'):
+                #     if speed != float('inf'):
 
-                        cv2.putText(img, "{0} mph".format(round(speed)), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
-                        cv2.arrowedLine(img, (r_cX, r_cY), (int(r_cX + r_Dx), int(r_cY + r_Dy)), (0,0,100),2)
-                        # birds-eye
-                        if bird_eye_preview: cv2.arrowedLine(transformed_output, (int(t_cX), int(t_cY)), (int(t_cX + t_Dx), int(t_cY + t_Dy)), (0,0,0),2)
+                #         cv2.putText(img, "{0} mph".format(round(speed)), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
+                #         cv2.arrowedLine(img, (r_cX, r_cY), (int(r_cX + r_Dx), int(r_cY + r_Dy)), (0,0,100),2)
+                #         # birds-eye
+                #         if bird_eye_preview: cv2.arrowedLine(transformed_output, (int(t_cX), int(t_cY)), (int(t_cX + t_Dx), int(t_cY + t_Dy)), (0,0,0),2)
 
-                transformed_previous_frame_centers = transformed_current_frame_centers
-                raw_previous_frame_centers = raw_current_frame_centers
+                # transformed_previous_frame_centers = transformed_current_frame_centers
+                # raw_previous_frame_centers = raw_current_frame_centers
 # #######################################################
 
             for car_id, car in visible_cars.items():
-                r_cX, r_cY = car.get_latest_raw_center()
-                speed, previous_transformed_center, current_transformed_center = car.get_latest_transformed_velocity()
+                # raw position, speed and velocity vectors
+                speed, previous_raw_center, current_raw_center = car.get_latest_raw_velocity()
+                r_cX, r_cY = current_raw_center
+                r_pX, r_pY = previous_raw_center
+                contour = car.get_latest_contour()
+
+                # transformed position, speed and velocity vectors
+                _, previous_transformed_center, current_transformed_center = car.get_latest_transformed_velocity()
                 t_cX, t_cY = current_transformed_center
-                # speed and raw velocity vectors
-                # transformed velocity vectors
+                t_pX, t_pY = previous_transformed_center
 
+                # annotate raw image with contour, centroid
+                cv2.drawContours(img, [contour], -1, (0, 0, 204), 2)
+                cv2.circle(img, (r_cX, r_cY), 7, (0, 0, 204), -1)
+                cv2.putText(img, "{0} mph".format(round(speed, 1)), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
+                cv2.arrowedLine(img, (r_pX, r_pY), (r_cX, r_cY), (0,0,100),2)
 
-                if bird_eye_preview: cv2.circle(transformed_output, (int(t_cX), int(t_cY)), 10, (0, 0, 0), -1)
+                if bird_eye_preview:
+                    cv2.circle(transformed_output, (int(t_cX), int(t_cY)), 10, (0, 0, 0), -1)
+                    cv2.arrowedLine(transformed_output, (int(t_pX), int(t_pY)), (int(t_cX), int(t_cY)), (0,0,0),2)
 
 
             cv2.imshow("original footage with blob/centroid", img)
