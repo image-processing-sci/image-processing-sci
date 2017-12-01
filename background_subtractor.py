@@ -48,9 +48,9 @@ def match_centers_across_frames(raw_current_frame_centers, raw_previous_frame_ce
                     xTp, yTp = transformed_previous_frame_centers[0][j]
                     transformed_parametrized_direction = (xTc - xTp, yTc - yTp)
 
-
-        #TODO: Apply scaling factor to adjust speed
-        center_correspondence_map[i] = (raw_current_frame_centers[0][i], transformed_current_frame_centers[0][i], curr_min_dist * 30.0/FRAMES_FOR_SPEED * SPEED_SCALING_FACTOR, raw_parametrized_direction, transformed_parametrized_direction)  # this is the speed in pixels per second
+        if raw_parametrized_direction and transformed_parametrized_direction:
+            #TODO: Apply scaling factor to adjust speed
+            center_correspondence_map[i] = (raw_current_frame_centers[0][i], transformed_current_frame_centers[0][i], curr_min_dist * 30.0/FRAMES_FOR_SPEED * SPEED_SCALING_FACTOR, raw_parametrized_direction, transformed_parametrized_direction)  # this is the speed in pixels per second
 
         # remove the center from the remaining previous_frame_center candidates
         if exhausted_center_index:
@@ -67,14 +67,6 @@ def transformToBirdsEye(raw_centers, transformation_matrix, preview = False):
         return []
     transformed_centers = cv2.perspectiveTransform(np.array([raw_centers], dtype=float), transformation_matrix)
     return transformed_centers
-
-    # if preview:
-    #     # draw transformed centroids onto cangas
-    #     output = np.zeros((2000, 2000))
-    #     for x, y in centers[0]:
-    #         cv2.circle(output, (int(x), int(y)), 20, (255, 255, 255), -1)
-    #     cv2.imshow('birds-eye', output)
-
 
 def main():
 
@@ -100,8 +92,6 @@ def main():
 
     FRAMES_FOR_SPEED = 1
     SPEED_SCALING_FACTOR = 0.06818181804 # miles per hour
-    MIN_CENTROID_Y = 375
-    MAX_CENTROID_Y = 800
     LANE_LINES = [880, 1000, 1120]
 
 
@@ -110,9 +100,9 @@ def main():
     # calculate transformation matrix
     transformation_matrix, _ = transform(checkerboard_image)
     transformed_background = cv2.warpPerspective(background, transformation_matrix, (2000, 2000))
+    # draw lane lines on background
     for l in LANE_LINES:
         cv2.line(transformed_background, (l, 0), (l, 2000), (0, 0, 0), 3)
-    # cv2.imshow("transformed_bg", transformed_background)
 
     # keep a cache of the previous frame centers
     transformed_previous_frame_centers = []
@@ -132,21 +122,19 @@ def main():
             if frame_count % FRAMES_FOR_SPEED == 0:
 
                 # birds-eye
-                if bird_eye_preview:
-                    transformed_output = transformed_background.copy()
-
+                if bird_eye_preview: transformed_output = transformed_background.copy()
 
                 imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 # transformed_image = transform(imgray)
                 # use the background subtractor
+                fgbg.apply(background)
                 fgmask = fgbg.apply(imgray)
 
                 # Pre processing, which includes blurring the image and thresholding
                 threshold = 10
 
-                fgmask = cv2.GaussianBlur(fgmask, (25, 25), 0)
+                fgmask = cv2.GaussianBlur(fgmask, (29, 29), 0)
                 ret, thresh = cv2.threshold(fgmask, threshold, 255, cv2.THRESH_BINARY)
-
 
                 if blob_preview: cv2.imshow('blobs', thresh)
 
@@ -155,8 +143,7 @@ def main():
 
                 blob_area_threshold = 700 # minimum size of blob in order to be considered a vehicle
                 raw_current_frame_centers = []  # will contain a list of the centroids of moving vehicles on raw footage
-
-                # import ipdb; ipdb.set_trace()
+                transformed_current_frame_centers = []
 
                 # loop over the contours
                 for c in cnts:
@@ -171,28 +158,25 @@ def main():
                             cY = int(M["m01"] / M["m00"])
 
                             centers_xy_coordinates = (cX, cY)
-                            if cY > MIN_CENTROID_Y and cY < MAX_CENTROID_Y:
+                            transformed_xy_coordinates = transformToBirdsEye([centers_xy_coordinates], transformation_matrix)
+                            # import ipdb; ipdb.set_trace()
+                            tX, tY = transformed_xy_coordinates[0][0]
+
+                            if tX >= LANE_LINES[0] and tX <= LANE_LINES[-1] and tY > 100 and tY < 1900:
                                 raw_current_frame_centers.append(centers_xy_coordinates)
+                                transformed_current_frame_centers.append([tX, tY])
 
                                 # draw the contour and center of the shape on the image
                                 cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
                                 cv2.circle(img, (cX, cY), 7, (0, 0, 204), -1)
 
-                temp_transform = transformToBirdsEye(raw_current_frame_centers, transformation_matrix)
-                temp_transform = temp_transform[0]
-                temp_transform = temp_transform[np.logical_and(temp_transform[:,0] >= LANE_LINES[0], temp_transform[:,0] <= LANE_LINES[-1])]
-
-                transformed_current_frame_centers = np.array([temp_transform])
+                transformed_current_frame_centers = np.array([transformed_current_frame_centers])
 
                 # birds-eye
                 if bird_eye_preview and len(transformed_current_frame_centers) > 0:
                     for x, y in transformed_current_frame_centers[0]:
                         cv2.circle(transformed_output, (int(x), int(y)), 10, (0, 0, 0), -1)
 
-                # do this for every FRAMES_FOR_SPEED frames.
-
-                # current_frame_centers.sort(key=lambda x: -x[1])
-                # previous_frame_centers.sort(key=lambda x: -x[1])  # sort the centers by closest to camera (bottom of the frame)
                 car_map = match_centers_across_frames([raw_current_frame_centers],
                                                     [raw_previous_frame_centers],
                                                     transformed_current_frame_centers,
@@ -202,6 +186,7 @@ def main():
 
                 # put velocities on the original image
                 for key in car_map:
+                    if car_map[key] == None: continue
                     raw_center, transformed_center, speed, raw_parametrized_direction, transformed_parametrized_direction = car_map[key]
                     r_cX, r_cY = raw_center
                     r_Dx, r_Dy = raw_parametrized_direction
@@ -209,21 +194,18 @@ def main():
                     t_Dx, t_Dy = transformed_parametrized_direction
 
                     if speed != float('inf'):
-                        # cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
+
                         cv2.putText(img, "{0} mph".format(round(speed)), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
                         cv2.arrowedLine(img, (r_cX, r_cY), (int(r_cX + r_Dx), int(r_cY + r_Dy)), (0,0,100),2)
                         # birds-eye
                         if bird_eye_preview: cv2.arrowedLine(transformed_output, (int(t_cX), int(t_cY)), (int(t_cX + t_Dx), int(t_cY + t_Dy)), (0,0,0),2)
 
-                    # else:
-                    #     cv2.putText(img, str('NaN'), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
                 transformed_previous_frame_centers = transformed_current_frame_centers
                 raw_previous_frame_centers = raw_current_frame_centers
 
             cv2.imshow("original footage with blob/centroid", img)
             # birds-eye
             if bird_eye_preview: cv2.imshow('birds-eye', transformed_output)
-
 
             frame_count += 1
 
