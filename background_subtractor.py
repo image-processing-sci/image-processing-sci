@@ -60,13 +60,23 @@ def match_centers_across_frames(raw_current_frame_centers, raw_previous_frame_ce
     return center_correspondence_map
 
 
-def transformToBirdsEye(raw_centers, transformation_matrix, preview = False):
+def transformToBirdsEye(raw_center, transformation_matrix, preview = False):
     # generate output canvas
     # apply t_mat to the centers
-    if not raw_centers:
+    if not raw_center:
         return []
-    transformed_centers = cv2.perspectiveTransform(np.array([raw_centers], dtype=float), transformation_matrix)
-    return transformed_centers
+    transformed_center = cv2.perspectiveTransform(np.array([raw_center], dtype=float), transformation_matrix)
+    return transformed_center
+
+def match_center_to_car(transformed_center, visible_cars):
+    # match transformed xy coordinates, visible_cars
+    min_dist = float('inf')
+    for car_id, car in visible_cars.items():
+        curr_dist = calc_euclidean_distance(car.get_latest_transformed_center(), transformed_center)
+        if curr_dist < min_dist:
+
+
+    # return the (car_id, car) that matches best
 
 def main():
 
@@ -93,6 +103,8 @@ def main():
     FRAMES_FOR_SPEED = 1
     SPEED_SCALING_FACTOR = 0.06818181804 # miles per hour
     LANE_LINES = [880, 1000, 1120]
+    ENTRANCE_RANGE = [200, 250]
+    EXIT_RANGE= [1750, 1800]
 
 
     # open transformation calibration checkerboard image
@@ -103,6 +115,8 @@ def main():
     # draw lane lines on background
     for l in LANE_LINES:
         cv2.line(transformed_background, (l, 0), (l, 2000), (0, 0, 0), 3)
+    for hg in ENTRANCE_RANGE + EXIT_RANGE:
+        cv2.line(transformed_background, (0, hg), (2000, hg), (0, 0, 0), 3)
 
     # keep a cache of the previous frame centers
     transformed_previous_frame_centers = []
@@ -112,6 +126,10 @@ def main():
     # preview settings
     bird_eye_preview = True
     blob_preview = False
+
+    visible_cars = {}
+    vehicle_id = 0
+    log_object = None
 
     # loop through frames of video
     while True:
@@ -154,22 +172,45 @@ def main():
                         M = cv2.moments(c)
                         # prevent divide by zer0
                         if M["m00"] != 0.0:
-                            cX = int(M["m10"] / M["m00"])
-                            cY = int(M["m01"] / M["m00"])
+                            r_cX = int(M["m10"] / M["m00"])
+                            r_cY = int(M["m01"] / M["m00"])
 
-                            centers_xy_coordinates = (cX, cY)
-                            transformed_xy_coordinates = transformToBirdsEye([centers_xy_coordinates], transformation_matrix)
+                            raw_center = (r_cX, r_cY)
+                            transformed_center = transformToBirdsEye([raw_center], transformation_matrix)
                             # import ipdb; ipdb.set_trace()
-                            tX, tY = transformed_xy_coordinates[0][0]
+                            t_cX, t_cY = transformed_center[0][0]
 
-                            if tX >= LANE_LINES[0] and tX <= LANE_LINES[-1] and tY > 100 and tY < 1900:
-                                raw_current_frame_centers.append(centers_xy_coordinates)
-                                transformed_current_frame_centers.append([tX, tY])
+                            if t_cX >= LANE_LINES[0] and t_cX <= LANE_LINES[-1] and t_cY > ENTRANCE_RANGE[0] and t_cY < EXIT_RANGE[1]:
+                                if t_cY < ENTRANCE_RANGE[1]:
+                                    # VEHICLE ENTERED
+                                    visible_cars[vehicle_id] = Car(vehicle_id, (r_cX, r_cY), (t_cX, t_cY), c)
+                                    vehicle_id += 1
+                                else:
+                                    # VEHICLE PREVIOUSLY VISIBLE
+                                    # match with previous entry in visible_cars
+                                    car_id, car = match_center_to_car(transformed_center, visible_cars)
+                                    # add new raw and transformed position
+                                    car.update_raw_and_transformed_position(raw_center, transformed_center)
+                                    car.update_contour(c)
+
+                                    if t_cY > EXIT_RANGE[0]:
+                                        # VEHICLE EXITING:
+                                        # log it and remove from visible cars
+                                        log_vehicle(car, log_object)
+                                        del visible_cars[car_id]
+                                        # del car
+
+
+# ###################################################
+                                # TODO: delete current behavior for all vehicles
+                                raw_current_frame_centers.append(raw_center)
+                                transformed_current_frame_centers.append([t_cX, t_cY])
 
                                 # draw the contour and center of the shape on the image
                                 cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
-                                cv2.circle(img, (cX, cY), 7, (0, 0, 204), -1)
+                                cv2.circle(img, (r_cX, r_cY), 7, (0, 0, 204), -1)
 
+                                # separate into new vehicles
                 transformed_current_frame_centers = np.array([transformed_current_frame_centers])
 
                 # birds-eye
@@ -202,6 +243,18 @@ def main():
 
                 transformed_previous_frame_centers = transformed_current_frame_centers
                 raw_previous_frame_centers = raw_current_frame_centers
+# #######################################################
+
+            for car_id, car in visible_cars.items():
+                r_cX, r_cY = car.get_latest_raw_center()
+                speed, previous_transformed_center, current_transformed_center = car.get_latest_transformed_velocity()
+                t_cX, t_cY = current_transformed_center
+                # speed and raw velocity vectors
+                # transformed velocity vectors
+
+
+                if bird_eye_preview: cv2.circle(transformed_output, (int(t_cX), int(t_cY)), 10, (0, 0, 0), -1)
+
 
             cv2.imshow("original footage with blob/centroid", img)
             # birds-eye
