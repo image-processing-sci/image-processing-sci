@@ -2,23 +2,27 @@ import cv2
 import os
 import numpy as np
 from transformation import transform
+import matplotlib.pyplot as plt
+
+FRAMES_FOR_SPEED = 1
+SPEED_SCALING_FACTOR = 0.06818181804  # miles per hour
+MIN_CENTROID_Y = 0
+MAX_CENTROID_Y = 800
+MILES_PER_160_FEET = 0.030303
+LANE_LINES = [880, 1000, 1120]
 
 def calc_euclidean_distance(current_center, previous_center):
-    try:
-        x1, y1 = current_center
-        x2, y2 = previous_center
-        return ((x1 - x2) ** 2 + (y2 - y1) ** 2) ** 0.5
-    except:
-        import ipdb; ipdb.set_trace()
-        return None
+    x1, y1 = current_center
+    x2, y2 = previous_center
+    return ((x1 - x2) ** 2 + (y2 - y1) ** 2) ** 0.5
 
+def get_density_of_cars(centers):
+     return len(centers)/MILES_PER_160_FEET
 
-
-def match_centers_across_frames(raw_current_frame_centers, raw_previous_frame_centers, transformed_current_frame_centers, transformed_previous_frame_centers, FRAMES_FOR_SPEED, SPEED_SCALING_FACTOR):
+def match_centers_across_frames(raw_current_frame_centers, raw_previous_frame_centers, transformed_current_frame_centers, transformed_previous_frame_centers):
     # import ipdb; ipdb.set_trace()
     if len(transformed_current_frame_centers) == 0 or len(transformed_previous_frame_centers) == 0 or len(raw_current_frame_centers) == 0:
         return {}
-
 
     numCurrent = len(transformed_current_frame_centers[0])
     numPrev = len(transformed_previous_frame_centers[0])
@@ -43,7 +47,6 @@ def match_centers_across_frames(raw_current_frame_centers, raw_previous_frame_ce
                     xRc, yRc = raw_current_frame_centers[0][i]
                     xRp, yRp = raw_previous_frame_centers[0][j]
                     raw_parametrized_direction = (xRc - xRp, yRc - yRp)
-
                     xTc, yTc = transformed_current_frame_centers[0][i]
                     xTp, yTp = transformed_previous_frame_centers[0][j]
                     transformed_parametrized_direction = (xTc - xTp, yTc - yTp)
@@ -90,10 +93,7 @@ def main():
     # background image we're doing right
     background = cv2.imread('big_files/background.png', 0)
 
-    FRAMES_FOR_SPEED = 1
-    SPEED_SCALING_FACTOR = 0.06818181804 # miles per hour
-    LANE_LINES = [880, 1000, 1120]
-
+    # background = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
 
     # open transformation calibration checkerboard image
     checkerboard_image = cv2.imread('betterCheckb.png')
@@ -180,9 +180,7 @@ def main():
                 car_map = match_centers_across_frames([raw_current_frame_centers],
                                                     [raw_previous_frame_centers],
                                                     transformed_current_frame_centers,
-                                                    transformed_previous_frame_centers,
-                                                    FRAMES_FOR_SPEED,
-                                                    SPEED_SCALING_FACTOR)  # need to return velocities of vehicles (speed + direction)
+                                                    transformed_previous_frame_centers)  # need to return velocities of vehicles (speed + direction)
 
                 # put velocities on the original image
                 for key in car_map:
