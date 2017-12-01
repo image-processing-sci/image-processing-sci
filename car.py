@@ -5,6 +5,7 @@ class Car:
 
     def __init__(self, car_id, raw_center, transformed_center, contour):
         self.transformed_velocities = []  # (speed, previous_position, current_position)
+        self.raw_velocities = []
         self.raw_centers = [raw_center]  # (rX, rY)
         self.transformed_centers = [transformed_center]  # (tX, tY)
         self.car_id = car_id  # #
@@ -15,6 +16,12 @@ class Car:
         :return: (speed, previous_center, current_center) tuple of transformed velocities palatable for drawing arrows
         '''
         return self.transformed_velocities[-1] if self.transformed_velocities else (-1, None, None)
+
+    def get_latest_raw_velocity(self):
+        '''
+        :return: (speed, previous_center, current_center) tuple of raw velocities palatable for drawing arrows
+        '''
+        return self.raw_velocities[-1] if self.raw_velocities else (-1, None, None)
 
     def get_latest_raw_center(self):
         '''
@@ -49,12 +56,18 @@ class Car:
         :return: None
         '''
         # add position to positions and add velocities
-        transformed_speed = calc_euclidean_distance(self.transformed_centers[-1], transformed_center) * 30.0/FRAMES_FOR_SPEED * SPEED_SCALING_FACTOR # speed in mph
+        real_speed = self._calculate_speed(self.transformed_centers[-1], transformed_center)
         previous_transformed_center = self.transformed_centers[-1]
+        previous_raw_center = self.raw_centers[-1]
 
-        self.transformed_velocities.append((transformed_speed, previous_transformed_center, transformed_center))
+        self.transformed_velocities.append((real_speed, previous_transformed_center, transformed_center))
+        self.raw_velocities.append((real_speed, previous_raw_center, raw_center))
+
         self.transformed_centers.append(transformed_center)
         self.raw_centers.append(raw_center)
+
+    def _calculate_speed(self, center_1, center_2):
+        return calc_euclidean_distance(center_1, center_2) * 30.0/FRAMES_FOR_SPEED * SPEED_SCALING_FACTOR  # speed in mph
 
     def get_car_id(self):
         return self.car_id
