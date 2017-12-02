@@ -1,5 +1,5 @@
 from background_subtractor import SPEED_SCALING_FACTOR, FRAMES_FOR_SPEED, calc_euclidean_distance
-
+from statistics import stdev, mean, median
 
 class Car:
 
@@ -57,17 +57,31 @@ class Car:
         '''
         # add position to positions and add velocities
         real_speed = self._calculate_speed(self.transformed_centers[-1], transformed_center)
+        average_speed = self._calculate_interpolated_speed(real_speed)
         previous_transformed_center = self.transformed_centers[-1]
         previous_raw_center = self.raw_centers[-1]
 
-        self.transformed_velocities.append((real_speed, previous_transformed_center, transformed_center))
-        self.raw_velocities.append((real_speed, previous_raw_center, raw_center))
+        self.transformed_velocities.append((average_speed, previous_transformed_center, transformed_center))
+        self.raw_velocities.append((average_speed, previous_raw_center, raw_center))
 
         self.transformed_centers.append(transformed_center)
         self.raw_centers.append(raw_center)
 
     def _calculate_speed(self, center_1, center_2):
         return calc_euclidean_distance(center_1, center_2) * 30.0/FRAMES_FOR_SPEED * SPEED_SCALING_FACTOR  # speed in mph
+
+    def _calculate_interpolated_speed(self, real_speed, NUM_STANDARD_DEVIATIONS=1):
+        if len(self.transformed_velocities) >= 10:
+            last_few_velocities = [tv[0] for tv in self.transformed_velocities[-10:]]
+            last_few_velocities.append(real_speed)
+            std = stdev(last_few_velocities)
+            avg = mean(last_few_velocities)
+            average_velocity = median([speed for speed in last_few_velocities if
+                                     (avg + NUM_STANDARD_DEVIATIONS * std) > speed > (
+                                     avg - NUM_STANDARD_DEVIATIONS * std)])
+            return average_velocity
+        else:
+            return real_speed
 
     def get_car_id(self):
         return self.car_id

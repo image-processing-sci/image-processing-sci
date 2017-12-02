@@ -11,7 +11,7 @@ class LineGraph():
         width - width of the graph
         height - height of the graph
     """
-    def __init__(self, title="", xlabel="", ylabel="", width=1000, height=600):
+    def __init__(self, title="", xlabel="", ylabel="", width=700, height=600):
         self.plot = figure(plot_width=width, plot_height=height)
        
     def drawLine(self, xdata, ydata, color='black'):
