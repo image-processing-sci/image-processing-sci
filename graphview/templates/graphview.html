@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv='content-type' content='text/html; charset=utf-8' />
+
+    <title>GraphView</title>
+
+    {{ js_resources|indent(4)|safe }}
+
+    {{ css_resources|indent(4)|safe }}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/bootstrap.min.css') }}">
+
+    {{ plot3d_script|indent(4)|safe }}
+    {{ line_script|indent(4)|safe }}
+    <script src="{{ url_for('static',filename='js/bootstrap.min.js') }}"></script>
+    
+  </head>
+  <body>
+    <div class="row">
+        <div class="col-sm-12">
+            <h1> GraphView </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-1"></div>
+        <div class="col-sm-5">
+            <h2> 3D Plot Graph </h2>
+            {{ plot3d_div|indent(4)|safe }}
+        </div>
+        <div class="col-sm-5">
+            <h2> 3D Plot Data Table </h2>
+            {% with values3d=values3d %}
+            {% include 'tabledata3d.html' %}
+            {% endwith %}
+        </div>
+        <div class="col-sm-1"></div>
+    </div>
+   
+    <div class="row">
+        <div class="col-sm-1"></div>
+        <div class="col-sm-5">
+            <h2> Line Graph </h2>
+            {{ line_div|indent(4)|safe }}
+        </div>
+        <div class="col-sm-5">
+            <h2> Line Data Table </h2>
+           
+            {% with values2d=values2d %}
+            {% include 'tabledata2d.html' %}
+            {% endwith %}
+        </div>
+        <div class="col-sm-1"></div>
+    </div>
+  </body>
+</html>
