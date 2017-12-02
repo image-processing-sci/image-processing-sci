@@ -1,5 +1,11 @@
+import numpy as np
 from background_subtractor import SPEED_SCALING_FACTOR, FRAMES_FOR_SPEED, calc_euclidean_distance
 from statistics import stdev, mean, median
+
+SPEED_SCALING_FACTOR = 0.06818181804
+FRAMES_FOR_SPEED = 1
+EXIT_LINE = 1800
+# FLOW_TRANSFORMED_LINES = np.array([1800, 1300])
 
 class Car:
 
@@ -90,11 +96,14 @@ class Car:
 
     def log_details(self):
         '''
-        :return: (car_id, transformed_centers (feet), transformed_velocities (mph)) tuple to be used for visualizations.
+        :return: str((car_id, transformed_centers (feet), transformed_velocities (mph))) tuple to be used for visualizations.
         All values are in real world units.
         '''
-        transformed_centers_in_feet = [center/10 for center in self.transformed_centers]
+        transformed_centers_in_feet = [(x/10, y/10) for x,y in self.transformed_centers]
         return self.car_id, transformed_centers_in_feet, self.transformed_velocities
 
     def __repr__(self):
-        return self.log_details()
+        return 'ID: {0}\nPositions\n\t{1}\nVelocities\n\t{2}'.format(self.car_id,
+                    [(round(x), round(y))for x,y in self.transformed_centers],
+                    [round(v[0]) for v in self.transformed_velocities])
+
