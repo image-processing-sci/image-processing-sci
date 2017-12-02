@@ -7,7 +7,7 @@ Note: This repository doesn't contain any proprietary information/videos. For th
 
 # Getting Started
 
-1) Clone this repository (note if you're using ssh you should set up your keys by following the directions [here] (https://help.github.com/articles/connecting-to-github-with-ssh/))
+1) Clone this repository (note if you're using ssh you should set up your keys by following the directions [here](https://help.github.com/articles/connecting-to-github-with-ssh/))
 
     `git clone git@github.com:image-processing-sci/image-processing-sci.git` or `git clone https://github.com/image-processing-sci/image-processing-sci.git`
 
@@ -36,7 +36,7 @@ Here's how to do it:
 
 4) `git push origin master:YOUR_BRANCH_NAME`
 
-5) Navigate back to the github page, link [here] (https://github.com/image-processing-sci/image-processing-sci) for convenience.
+5) Navigate back to the github page, link [here](https://github.com/image-processing-sci/image-processing-sci) for convenience.
 
 6) You should see an option to open up a pull request. Use that button and write in some details about what you changed.
 
