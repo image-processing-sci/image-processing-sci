@@ -102,3 +102,7 @@ ENV/
 outputs/
 .DS_Store
 big_files/
+.idea/
+.idea/workspace.xml
+__pycache__/
+.*
