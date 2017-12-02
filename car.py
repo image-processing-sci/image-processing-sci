@@ -1,5 +1,9 @@
+import numpy as np
+
 SPEED_SCALING_FACTOR = 0.06818181804
 FRAMES_FOR_SPEED = 1
+EXIT_LINE = 1800
+# FLOW_TRANSFORMED_LINES = np.array([1800, 1300])
 
 class Car:
 
@@ -10,10 +14,7 @@ class Car:
         self.transformed_centers = [transformed_center]  # (tX, tY)
         self.car_id = car_id  # #
         self.contours = [contour]  # contour object from opencv
-        self.visible = True
-
-    def exit(self):
-        self.visible = False
+        self.exited = False
 
     def get_latest_transformed_velocity(self):
         '''
@@ -70,6 +71,10 @@ class Car:
         self.transformed_centers.append(transformed_center)
         self.raw_centers.append(raw_center)
 
+        if transformed_center[1] >= EXIT_LINE:
+            # mark as exited
+            self.exited = True
+
     def calc_euclidean_distance(current_center, previous_center):
         try:
             x1, y1 = current_center
@@ -89,12 +94,14 @@ class Car:
 
     def log_details(self):
         '''
-        :return: (car_id, transformed_centers (feet), transformed_velocities (mph)) tuple to be used for visualizations.
+        :return: str((car_id, transformed_centers (feet), transformed_velocities (mph))) tuple to be used for visualizations.
         All values are in real world units.
         '''
-        transformed_centers_in_feet = [center/10 for center in self.transformed_centers]
+        transformed_centers_in_feet = [(x/10, y/10) for x,y in self.transformed_centers]
         return self.car_id, transformed_centers_in_feet, self.transformed_velocities
 
     def __repr__(self):
-        return self.log_details()
+        return 'ID: {0}\nPositions\n\t{1}\nVelocities\n\t{2}'.format(self.car_id,
+                    [(round(x), round(y))for x,y in self.transformed_centers],
+                    [round(v[0]) for v in self.transformed_velocities])
 
