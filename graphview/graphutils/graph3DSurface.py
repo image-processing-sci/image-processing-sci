@@ -4,6 +4,7 @@ import numpy as np
 from bokeh.core.properties import Instance, String
 from bokeh.models import ColumnDataSource, LayoutDOM
 from bokeh.io import show
+from collections import namedtuple
 
 # Benson Chau <bchau3440@gmail.com>
 # Shamelessly copied and possibly highly modified from:
@@ -156,17 +157,25 @@ class Surface3d(LayoutDOM):
 
     color = String
 
-    def draw(self):
-        x = np.arange(0, 300, 10)
-        y = np.arange(0, 300, 10)
-        xx, yy = np.meshgrid(x, y)
+    def draw(self, x, y, z):
+        xx, yy, zz = np.meshgrid(x, y, z)
         xx = xx.ravel()
         yy = yy.ravel()
-        value = np.sin(xx/50) * np.cos(yy/50) * 50 + 50
+        zz = zz.ravel()
 
+        # import pdb; pdb.set_trace()
+       
+        value = np.sin(xx/zz) * np.cos(yy/zz) * zz + zz
+        
         source = ColumnDataSource(data=dict(x=xx, y=yy, z=value, color=value))
 
         surface = Surface3d(x="x", y="y", z="z", color="color", data_source=source)
         
-        return surface
+        xyz = {} 
+        XY = namedtuple("XY", ["x", "y"])
+        for x, y, z in zip(xx, yy, zz): 
+            xy = XY(x=x, y=y)
+            xyz[xy] = z
+        
+        return surface, xyz
 

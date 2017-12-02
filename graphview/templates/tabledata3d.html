@@ -1,0 +1,15 @@
+<table>
+    <tr>
+        <th>x</th>
+        <th>y</th>
+        <th>z</th>
+    </tr>
+    
+    {% for xy in values3d.iterkeys()|sort %}
+        <tr>
+            <td>{{ xy[0] }} </td> 
+            <td>{{ xy[1] }} </td>
+            <td>{{ values3d[xy] }} </td>
+        </tr> 
+    {% endfor %}
+</table>
