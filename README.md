@@ -3,7 +3,7 @@ GT Smart City Infrastructure's Image Processing Team (Docker)
 
 This repository contains our code for processing the videos provided by the Smart City Infrastructure team.
 
-Note: This repository doesn't contain any proprietary information/videos. For those, please email Cibi, Dr. Tsai, or Anirbhan
+Note: This repository doesn't contain any proprietary information/videos. For those, please email Cibi, Dr. Tsai, or Anirban
 
 # Getting Started
 
