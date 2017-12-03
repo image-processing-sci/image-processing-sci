@@ -5,6 +5,10 @@ from transformation import transform
 # from vehicle.py import Car
 from car import Car
 import ipdb
+import pickle
+from graphview.graphview import plot_densities
+
+global_densities = {'num_vehicles': [], 'timestamps': []}
 
 def calc_euclidean_distance(current_center, previous_center):
     try:
@@ -47,13 +51,17 @@ def match_center_to_car(transformed_center, visible_cars):
     return (matched_car_id, visible_cars[matched_car_id])
 
 def log_car_details(vehicle, offsets):
-    print('visualize {0} and its offsets {1}'.format(vehicle.car_id, offsets))
+    # print('visualize {0} and its offsets {1}'.format(vehicle.car_id, offsets))
+    pass
 
 def log_flow_timestamp(timestamp):
-    print('car passed through line at ', timestamp)
+    # print('car passed through line at ', timestamp)
+    pass
 
 def log_density(num_vehicles, timestamp):
-    print('{0} cars per 160 ft of two lanes at {1} sec'.format(num_vehicles, timestamp))
+    # print('{0} cars per 160 ft of two lanes at {1} sec'.format(num_vehicles, timestamp))
+    global_densities['num_vehicles'].append(num_vehicles)
+    global_densities['timestamps'].append(timestamp)
 
 def main():
 
@@ -85,7 +93,7 @@ def main():
     ENTRANCE_RANGE = [200, 250]
     EXIT_RANGE= [1950, 2000]
     BACKGROUND_DIFFERENCE_THRESHOLD = 10
-    BLOB_AREA_THRESHOLD = 700 # minimum size of blob in order to be considered a vehicle
+    BLOB_AREA_THRESHOLD = 7000  # minimum size of blob in order to be considered a vehicle
 
     # open transformation calibration checkerboard image
     checkerboard_image = cv2.imread('betterCheckb.png')
@@ -105,7 +113,7 @@ def main():
 
     # preview settings
     bird_eye_preview = True
-    blob_preview = False
+    blob_preview = True
 
     visible_cars = {}
     num_visible = -1
@@ -138,9 +146,20 @@ def main():
                 # Get the contours for the thresholded image
                 im2, cnts, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+                # proper behavior is to have all cars have car.updated = False
+                # anyUpdated = False
+                # for temp in visible_cars:
+                #     anyUpdated = anyUpdated or visible_cars[temp].updated
+                # if anyUpdated: ipdb.set_trace()
+
                 # loop over the contours
-                for c in cnts:
-                    area = cv2.contourArea(c)  # getting blob area to threshold
+                print("updating all cars", len(visible_cars))
+                # ipdb.set_trace()
+                cnts = [(c, cv2.contourArea(c)) for c in cnts]
+                cnts.sort(key=lambda c: c[1], reverse=True)
+                for i, contour_pairing in enumerate(cnts):
+                    c, area = contour_pairing
+                    # area = cv2.contourArea(c)  # getting blob area to threshold
                     # compute the center of the contour
                     if area > BLOB_AREA_THRESHOLD:
                         # import ipdb; ipdb.set_trace()
@@ -164,15 +183,19 @@ def main():
                                     # flow log here
                                     log_flow_timestamp(frame_count / FRAMES_PER_SECOND)
 
-                                elif visible_cars:
-                                    # VEHICLE PREVIOUSLY VISIBLE: match with previous entry in visible_cars
+                                elif visible_cars and i < len(visible_cars):
 
+                                    # VEHICLE PREVIOUSLY VISIBLE: match with previous entry in visible_cars
+                                    print("trying to match a blob with area ", area)
                                     car_id, vehicle = match_center_to_car(transformed_center[0][0], visible_cars)
                                     vehicle.updated = True
+                                    print('matched updated', car_id)
+
                                     # add new raw and transformed position
                                     vehicle.update_raw_and_transformed_positions(raw_center, (t_cX, t_cY))
                                     vehicle.update_contour(c)
-
+                    else:
+                        break
 
                 # loop through cars to log those which have dissappeared and then remove them
                 for car_id, vehicle in visible_cars.items():
@@ -225,8 +248,14 @@ def main():
 
             frame_count += 1
 
-        if (cv2.waitKey(27) != -1):
+        if (cv2.waitKey(27) != -1):  # space button
+            # save your vars
+            pickle.dump(global_densities, open("global_densities.p", "wb"))
+            plot_densities()
             break
+
+    pickle.dump(global_densities, open("global_densities.p", "wb"))
+    plot_densities()
 
     capture.release()
     video.release()
