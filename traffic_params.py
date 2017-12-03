@@ -1,12 +1,12 @@
 import cv2
-import os
 import numpy as np
 from transformation import transform
 from car import Car
 import pickle
 from graphview.graphview import plot_logs
 
-log_attributes = {'num_vehicles': [], 'timestamps': [], 'flow_timestamps': []}
+log_attributes = {'num_vehicles': [], 'timestamps': [], 'flow_timestamps': [], 'average_speed': [], 'average_offset': []}
+
 
 def calc_euclidean_distance(current_center, previous_center):
     x1, y1 = current_center
@@ -40,44 +40,41 @@ def match_center_to_car(transformed_center, visible_cars):
     # return the (car_id, vehicle) that matches best
     return (matched_car_id, visible_cars[matched_car_id])
 
-def log_car_details(vehicle, offsets):
-    # print('visualize {0} and its offsets {1}'.format(vehicle.car_id, offsets))
-    pass
 
 def log_flow_timestamp(timestamp):
     # print('car passed through line at ', timestamp)
     log_attributes['flow_timestamps'].append(timestamp)
 
-def log_density(num_vehicles, timestamp):
+def log_car_details(vehicle):
+    # print('visualize {0}'.format(vehicle.car_id))
+    pass
+
+def log_density_and_avg_speed_or_offset(num_vehicles, avg_speed, avg_offset, timestamp):
     # print('{0} cars per 160 ft of two lanes at {1} sec'.format(num_vehicles, timestamp))
     log_attributes['num_vehicles'].append(num_vehicles)
+    log_attributes['timestamps'].append(timestamp)
+    log_attributes['num_vehicles'].append(num_vehicles)
+    log_attributes['average_speed'].append(avg_speed)
+    log_attributes['average_offset'].append(avg_offset)
     log_attributes['timestamps'].append(timestamp)
 
 def main():
 
     # Open the video
     capture = cv2.VideoCapture('big_files/final.mp4')
-    size = (int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
-            int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+    # size = (int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
+    #         int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+    # fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 
-    # if the output mp4 already exists, delete it
-    try:
-        os.remove('outputs/output.mp4')
-    except:
-        pass
-
-    # create a new output mp4
-    video = cv2.VideoWriter('outputs/output.mp4', fourcc, 30.0, size)
+    # background subtraction
     fgbg = cv2.createBackgroundSubtractorMOG2(varThreshold=100, detectShadows=False)
-    detector = cv2.SimpleBlobDetector_create()
+    # detector = cv2.SimpleBlobDetector_create()
 
     # background image we're doing right
     background = cv2.imread('big_files/background.png', 0)
 
     FRAMES_PER_SECOND = 30
     FRAMES_FOR_SPEED = 1
-    SPEED_SCALING_FACTOR = 0.06818181804 # miles per hour
     LANE_LINES = [880, 1000, 1120]
     LANE_CENTERS = [940, 1060]
     ENTRANCE_RANGE = [200, 250]
@@ -97,8 +94,6 @@ def main():
         cv2.line(transformed_background, (0, hg), (2000, hg), (0, 0, 0), 3)
 
     # keep a cache of the previous frame centers
-    transformed_previous_frame_centers = []
-    raw_previous_frame_centers = []
     frame_count = 0
 
     # preview settings
@@ -107,9 +102,7 @@ def main():
     retain_trajectories = True
 
     visible_cars = {}
-    num_visible = -1
     vehicle_id = 0
-    log_object = None
 
     # transformed_output = transformed_background
     first_t_plot = True
@@ -178,31 +171,30 @@ def main():
                                     vehicle.update_raw_and_transformed_positions(raw_center, (t_cX, t_cY))
                                     vehicle.update_contour(c)
                     else:
+                        # the rest of the blobs do not meet our minimum threshold
                         break
 
-                # loop through cars to log those which have dissappeared and then remove them
+                # loop through cars to log those which have dissappeared and then log/remove them
                 for car_id, vehicle in visible_cars.items():
                     if not vehicle.updated:
-                        vehicle_offsets = [round(min([abs(t_cX - lc) for lc in LANE_CENTERS]) / 10, 1) for (t_cX, t_cY) in vehicle.transformed_centers]
-                        log_car_details(vehicle, vehicle_offsets)
+                        log_car_details(vehicle)
                         print('{0} has exited'.format(car_id))
                         # log the car information
                 visible_cars = {car_id: vehicle for (car_id, vehicle) in visible_cars.items() if vehicle.updated}
 
-                # if len(visible_cars) != num_visible:
-                num_visible = len(visible_cars)
-                log_density(num_visible, frame_count / FRAMES_PER_SECOND)
-
-    # ########
-
+            speed_sum = 0
+            offset_sum = 0
+            num_valid_vehicles = 0
             # display information for cars that are still visible
             for car_id, vehicle in visible_cars.items():
                 # reset vehicle to not updated
                 vehicle.updated = False
+
                 # raw position, speed and velocity vectors
                 current_raw_center = vehicle.get_latest_raw_center()
                 speed, previous_raw_center, _ = vehicle.get_latest_raw_velocity()
                 if not current_raw_center or not previous_raw_center: continue
+                num_valid_vehicles += 1
                 r_cX, r_cY = current_raw_center
                 r_pX, r_pY = previous_raw_center
                 contour = vehicle.get_latest_contour()
@@ -213,6 +205,11 @@ def main():
                 t_cX, t_cY = current_transformed_center
                 t_pX, t_pY = previous_transformed_center
 
+                # update average speed and offset sums
+                speed_sum += speed
+                offset = min([abs(t_cX - lc) for lc in LANE_CENTERS]) / 10
+                offset_sum += offset
+
                 # annotate raw image with contour, centroid
                 cv2.drawContours(img, [contour], -1, (0, 0, 204), 2)
                 cv2.circle(img, (r_cX, r_cY), 7, (0, 0, 204), -1)
@@ -220,11 +217,12 @@ def main():
                 cv2.arrowedLine(img, (r_pX, r_pY), (r_cX, r_cY), (0,0,100),2)
 
                 if bird_eye_preview:
-                    # cv2.line(transformed_output, (int(t_cX), int(t_cY)), )
                     cv2.circle(transformed_output, (int(t_cX), int(t_cY)), 3, (0, 0, 0), -1)
                     cv2.line(transformed_output, (int(t_cX), int(t_cY)), (int(t_pX), int(t_pY)), (0,0,0),2)
 
-
+            avg_speed = speed_sum / num_valid_vehicles if num_valid_vehicles != 0 else -1
+            avg_offset = offset_sum / num_valid_vehicles if num_valid_vehicles != 0 else -1
+            log_density_and_avg_speed_or_offset(num_valid_vehicles, avg_speed, avg_offset, frame_count / FRAMES_PER_SECOND)
 
             cv2.imshow("original footage with blob/centroid", img)
             # birds-eye
@@ -242,7 +240,6 @@ def main():
     plot_logs()
 
     capture.release()
-    video.release()
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':

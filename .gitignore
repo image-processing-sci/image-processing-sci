@@ -106,3 +106,4 @@ big_files/
 .idea/workspace.xml
 __pycache__/
 .*
+temp-plot.html
