@@ -1,13 +1,12 @@
 import cv2
-import os
 import numpy as np
 from transformation import transform
-# from vehicle.py import Car
 from car import Car
 import pickle
-from graphview.graphview import plot_densities
+from graphview.graphview import plot_logs
 
-global_densities = {'num_vehicles': [], 'timestamps': [], 'average_speed': [], 'average_offset': []}
+log_attributes = {'num_vehicles': [], 'timestamps': [], 'flow_timestamps': [], 'average_speed': [], 'average_offset': []}
+
 
 def calc_euclidean_distance(current_center, previous_center):
     x1, y1 = current_center
@@ -43,38 +42,33 @@ def match_center_to_car(transformed_center, visible_cars):
 
 
 def log_flow_timestamp(timestamp):
-    # print('car passed through line at ', timestamp)
-    pass
+    log_attributes['flow_timestamps'].append(timestamp)
 
 def log_car_details(vehicle):
-    # print('visualize {0}'.format(vehicle.car_id))
     pass
 
 def log_density_and_avg_speed_or_offset(num_vehicles, avg_speed, avg_offset, timestamp):
-    # print('{0} cars per 160 ft of two lanes at {1} sec'.format(num_vehicles, timestamp))
-    global_densities['num_vehicles'].append(num_vehicles)
-    global_densities['average_speed'].append(avg_speed)
-    global_densities['average_offset'].append(avg_offset)
-    global_densities['timestamps'].append(timestamp)
+    log_attributes['num_vehicles'].append(num_vehicles)
+    log_attributes['timestamps'].append(timestamp)
+    log_attributes['num_vehicles'].append(num_vehicles)
+    log_attributes['average_speed'].append(avg_speed)
+    log_attributes['average_offset'].append(avg_offset)
+    log_attributes['timestamps'].append(timestamp)
 
 def main():
 
     # Open the video
     capture = cv2.VideoCapture('big_files/final.mp4')
-    size = (int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
-            int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 
     # background subtraction
     fgbg = cv2.createBackgroundSubtractorMOG2(varThreshold=100, detectShadows=False)
-    detector = cv2.SimpleBlobDetector_create()
+    # detector = cv2.SimpleBlobDetector_create()
 
     # background image we're doing right
     background = cv2.imread('big_files/background.png', 0)
 
     FRAMES_PER_SECOND = 30
     FRAMES_FOR_SPEED = 1
-    SPEED_SCALING_FACTOR = 0.06818181804 # miles per hour
     LANE_LINES = [880, 1000, 1120]
     LANE_CENTERS = [940, 1060]
     ENTRANCE_RANGE = [200, 250]
@@ -94,8 +88,6 @@ def main():
         cv2.line(transformed_background, (0, hg), (2000, hg), (0, 0, 0), 3)
 
     # keep a cache of the previous frame centers
-    transformed_previous_frame_centers = []
-    raw_previous_frame_centers = []
     frame_count = 0
 
     # preview settings
@@ -105,7 +97,6 @@ def main():
 
     visible_cars = {}
     vehicle_id = 0
-    log_object = None
 
     # transformed_output = transformed_background
     first_t_plot = True
@@ -185,7 +176,6 @@ def main():
                         # log the car information
                 visible_cars = {car_id: vehicle for (car_id, vehicle) in visible_cars.items() if vehicle.updated}
 
-    # ########
             speed_sum = 0
             offset_sum = 0
             num_valid_vehicles = 0
@@ -236,12 +226,12 @@ def main():
 
         if (cv2.waitKey(27) != -1):  # space button
             # save your vars
-            pickle.dump(global_densities, open("global_densities.p", "wb"))
-            plot_densities()
+            pickle.dump(log_attributes, open("log_attributes.p", "wb"))
+            plot_logs()
             break
 
-    pickle.dump(global_densities, open("global_densities.p", "wb"))
-    plot_densities()
+    pickle.dump(log_attributes, open("log_attributes_finished.p", "wb"))
+    plot_logs()
 
     capture.release()
     cv2.destroyAllWindows()
