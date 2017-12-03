@@ -2,12 +2,11 @@ import cv2
 import os
 import numpy as np
 from transformation import transform
-# from vehicle.py import Car
 from car import Car
 import pickle
-from graphview.graphview import plot_densities
+from graphview.graphview import plot_logs
 
-global_densities = {'num_vehicles': [], 'timestamps': []}
+log_attributes = {'num_vehicles': [], 'timestamps': [], 'flow_timestamps': []}
 
 def calc_euclidean_distance(current_center, previous_center):
     x1, y1 = current_center
@@ -47,12 +46,12 @@ def log_car_details(vehicle, offsets):
 
 def log_flow_timestamp(timestamp):
     # print('car passed through line at ', timestamp)
-    pass
+    log_attributes['flow_timestamps'].append(timestamp)
 
 def log_density(num_vehicles, timestamp):
     # print('{0} cars per 160 ft of two lanes at {1} sec'.format(num_vehicles, timestamp))
-    global_densities['num_vehicles'].append(num_vehicles)
-    global_densities['timestamps'].append(timestamp)
+    log_attributes['num_vehicles'].append(num_vehicles)
+    log_attributes['timestamps'].append(timestamp)
 
 def main():
 
@@ -190,9 +189,9 @@ def main():
                         # log the car information
                 visible_cars = {car_id: vehicle for (car_id, vehicle) in visible_cars.items() if vehicle.updated}
 
-                if len(visible_cars) != num_visible:
-                    num_visible = len(visible_cars)
-                    log_density(num_visible, frame_count / FRAMES_PER_SECOND)
+                # if len(visible_cars) != num_visible:
+                num_visible = len(visible_cars)
+                log_density(num_visible, frame_count / FRAMES_PER_SECOND)
 
     # ########
 
@@ -235,12 +234,12 @@ def main():
 
         if (cv2.waitKey(27) != -1):  # space button
             # save your vars
-            pickle.dump(global_densities, open("global_densities.p", "wb"))
-            plot_densities()
+            pickle.dump(log_attributes, open("log_attributes.p", "wb"))
+            plot_logs()
             break
 
-    pickle.dump(global_densities, open("global_densities.p", "wb"))
-    plot_densities()
+    pickle.dump(log_attributes, open("log_attributes_finished.p", "wb"))
+    plot_logs()
 
     capture.release()
     video.release()
