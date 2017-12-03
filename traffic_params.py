@@ -42,15 +42,12 @@ def match_center_to_car(transformed_center, visible_cars):
 
 
 def log_flow_timestamp(timestamp):
-    # print('car passed through line at ', timestamp)
     log_attributes['flow_timestamps'].append(timestamp)
 
 def log_car_details(vehicle):
-    # print('visualize {0}'.format(vehicle.car_id))
     pass
 
 def log_density_and_avg_speed_or_offset(num_vehicles, avg_speed, avg_offset, timestamp):
-    # print('{0} cars per 160 ft of two lanes at {1} sec'.format(num_vehicles, timestamp))
     log_attributes['num_vehicles'].append(num_vehicles)
     log_attributes['timestamps'].append(timestamp)
     log_attributes['num_vehicles'].append(num_vehicles)
@@ -62,9 +59,6 @@ def main():
 
     # Open the video
     capture = cv2.VideoCapture('big_files/final.mp4')
-    # size = (int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
-    #         int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-    # fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 
     # background subtraction
     fgbg = cv2.createBackgroundSubtractorMOG2(varThreshold=100, detectShadows=False)
