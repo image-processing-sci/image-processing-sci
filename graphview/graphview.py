@@ -2,10 +2,10 @@
 
 from flask import Flask, render_template, request, redirect, session, abort
 
-from bokeh.embed import components
-from bokeh.plotting import figure
-from bokeh.resources import INLINE
-from bokeh.util.string import encode_utf8
+# from bokeh.embed import components
+# from bokeh.plotting import figure
+# from bokeh.resources import INLINE
+# from bokeh.util.string import encode_utf8
 
 # TODO: create a class to manage all the different graphs
 from graphutils.graph3DSurface import Surface3d
@@ -20,7 +20,7 @@ def graphview():
     z = [5, 6, 7, 8, 9]
 
     graph_3dsurface, xyz = Surface3d().draw(x, y, z)
-    
+
     linegraph = LineGraph()
     linegraph.drawLine(x, y)
     graph_lines = linegraph.draw()
