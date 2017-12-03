@@ -16,6 +16,7 @@ class Car:
         self.transformed_centers = [transformed_center]  # (tX, tY)
         self.car_id = car_id  # #
         self.contours = [contour]  # contour object from opencv
+        self.updated = True
 
     def get_latest_transformed_velocity(self):
         '''

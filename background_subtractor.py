@@ -2,7 +2,7 @@ import cv2
 import os
 import numpy as np
 from transformation import transform
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 FRAMES_FOR_SPEED = 1
 SPEED_SCALING_FACTOR = 0.06818181804  # miles per hour
