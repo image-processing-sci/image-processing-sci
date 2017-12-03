@@ -49,10 +49,8 @@ def log_car_details(vehicle):
 def log_density_and_avg_speed_or_offset(num_vehicles, avg_speed, avg_offset, timestamp):
     log_attributes['num_vehicles'].append(num_vehicles)
     log_attributes['timestamps'].append(timestamp)
-    log_attributes['num_vehicles'].append(num_vehicles)
     log_attributes['average_speed'].append(avg_speed)
     log_attributes['average_offset'].append(avg_offset)
-    log_attributes['timestamps'].append(timestamp)
 
 def main():
 
