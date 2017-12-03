@@ -46,6 +46,14 @@ def match_center_to_car(transformed_center, visible_cars):
     # return the (car_id, vehicle) that matches best
     return (matched_car_id, visible_cars[matched_car_id])
 
+def log_car_details(vehicle, offsets):
+    print('visualize {0} and its offsets {1}'.format(vehicle.car_id, offsets))
+
+def log_flow_timestamp(timestamp):
+    print('car passed through line at ', timestamp)
+
+def log_density(num_vehicles, timestamp):
+    print('{0} cars per 160 ft of two lanes at {1} sec'.format(num_vehicles, timestamp))
 
 def main():
 
@@ -69,12 +77,15 @@ def main():
     # background image we're doing right
     background = cv2.imread('big_files/background.png', 0)
 
+    FRAMES_PER_SECOND = 30
     FRAMES_FOR_SPEED = 1
     SPEED_SCALING_FACTOR = 0.06818181804 # miles per hour
     LANE_LINES = [880, 1000, 1120]
+    LANE_CENTERS = [940, 1060]
     ENTRANCE_RANGE = [200, 250]
     EXIT_RANGE= [1950, 2000]
-
+    BACKGROUND_DIFFERENCE_THRESHOLD = 10
+    BLOB_AREA_THRESHOLD = 700 # minimum size of blob in order to be considered a vehicle
 
     # open transformation calibration checkerboard image
     checkerboard_image = cv2.imread('betterCheckb.png')
@@ -97,6 +108,7 @@ def main():
     blob_preview = False
 
     visible_cars = {}
+    num_visible = -1
     vehicle_id = 0
     log_object = None
 
@@ -106,76 +118,78 @@ def main():
         ret, img = capture.read()
         if ret == True:
 
-            # if frame_count % FRAMES_FOR_SPEED == 0:
+            if frame_count % FRAMES_FOR_SPEED == 0:
 
-            # birds-eye
-            if bird_eye_preview: transformed_output = transformed_background.copy()
+                # birds-eye
+                if bird_eye_preview: transformed_output = transformed_background.copy()
 
-            imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            # use the background subtractor
-            fgbg.apply(background)
-            fgmask = fgbg.apply(imgray)
+                imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                # use the background subtractor
+                fgbg.apply(background)
+                fgmask = fgbg.apply(imgray)
 
-            # Pre processing, which includes blurring the image and thresholding
-            threshold = 10
+                # Pre processing, which includes blurring the image and thresholding
 
-            fgmask = cv2.GaussianBlur(fgmask, (29, 29), 0)
-            ret, thresh = cv2.threshold(fgmask, threshold, 255, cv2.THRESH_BINARY)
+                fgmask = cv2.GaussianBlur(fgmask, (29, 29), 0)
+                ret, thresh = cv2.threshold(fgmask, BACKGROUND_DIFFERENCE_THRESHOLD, 255, cv2.THRESH_BINARY)
 
-            if blob_preview: cv2.imshow('blobs', thresh)
+                if blob_preview: cv2.imshow('blobs', thresh)
 
-            # Get the contours for the thresholded image
-            im2, cnts, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                # Get the contours for the thresholded image
+                im2, cnts, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            blob_area_threshold = 700 # minimum size of blob in order to be considered a vehicle
+                # loop over the contours
+                for c in cnts:
+                    area = cv2.contourArea(c)  # getting blob area to threshold
+                    # compute the center of the contour
+                    if area > BLOB_AREA_THRESHOLD:
+                        # import ipdb; ipdb.set_trace()
+                        M = cv2.moments(c)
+                        # prevent divide by zer0
+                        if M["m00"] != 0.0:
+                            r_cX = int(M["m10"] / M["m00"])
+                            r_cY = int(M["m01"] / M["m00"])
 
-            new_vehicle = False
+                            raw_center = (r_cX, r_cY)
+                            transformed_center = transformToBirdsEye([raw_center], transformation_matrix)
+                            t_cX, t_cY = transformed_center[0][0]
+                            t_cX += 33 # assume a car is 6.6 feet wide, shift point over by half of the width (3.3 feet = 33 px in transformed plane)
 
-            # loop over the contours
-            for c in cnts:
-                area = cv2.contourArea(c)  # getting blob area to threshold
-                # compute the center of the contour
-                if area > blob_area_threshold:
-                    # import ipdb; ipdb.set_trace()
-                    M = cv2.moments(c)
-                    # prevent divide by zer0
-                    if M["m00"] != 0.0:
-                        r_cX = int(M["m10"] / M["m00"])
-                        r_cY = int(M["m01"] / M["m00"])
+                            if t_cX >= LANE_LINES[0] and t_cX <= LANE_LINES[-1] and t_cY > ENTRANCE_RANGE[0] and t_cY < EXIT_RANGE[1]:
+                                if t_cY < ENTRANCE_RANGE[1]:
+                                    print("new vehicle", vehicle_id, transformed_center[0][0])
+                                    # VEHICLE ENTERED
+                                    visible_cars[vehicle_id] = Car(vehicle_id, (r_cX, r_cY), (t_cX, t_cY), c)
+                                    vehicle_id += 1
+                                    # flow log here
+                                    log_flow_timestamp(frame_count / FRAMES_PER_SECOND)
 
-                        raw_center = (r_cX, r_cY)
-                        transformed_center = transformToBirdsEye([raw_center], transformation_matrix)
-                        t_cX, t_cY = transformed_center[0][0]
+                                elif visible_cars:
+                                    # VEHICLE PREVIOUSLY VISIBLE: match with previous entry in visible_cars
 
-                        if t_cX >= LANE_LINES[0] and t_cX <= LANE_LINES[-1] and t_cY > ENTRANCE_RANGE[0] and t_cY < EXIT_RANGE[1]:
-                            if t_cY < ENTRANCE_RANGE[1]:
-                                print("new vehicle", vehicle_id, transformed_center[0][0])
-                                # VEHICLE ENTERED
-                                visible_cars[vehicle_id] = Car(vehicle_id, (r_cX, r_cY), (t_cX, t_cY), c)
-                                vehicle_id += 1
-
-                                new_vehicle = True
-
-                            elif visible_cars:
-                                # VEHICLE PREVIOUSLY VISIBLE
-                                # match with previous entry in visible_cars
-
-                                # ipdb.set_trace()
-                                car_id, vehicle = match_center_to_car(transformed_center[0][0], visible_cars)
-                                vehicle.updated = True
-                                # print("previously seen vehicle", car_id)
-                                # add new raw and transformed position
-                                vehicle.update_raw_and_transformed_positions(raw_center, (t_cX, t_cY))
-                                vehicle.update_contour(c)
+                                    car_id, vehicle = match_center_to_car(transformed_center[0][0], visible_cars)
+                                    vehicle.updated = True
+                                    # add new raw and transformed position
+                                    vehicle.update_raw_and_transformed_positions(raw_center, (t_cX, t_cY))
+                                    vehicle.update_contour(c)
 
 
-            # print('processed all contours in this frame')
+                # loop through cars to log those which have dissappeared and then remove them
+                for car_id, vehicle in visible_cars.items():
+                    if not vehicle.updated:
+                        vehicle_offsets = [round(min([abs(t_cX - lc) for lc in LANE_CENTERS]) / 10, 1) for (t_cX, t_cY) in vehicle.transformed_centers]
+                        log_car_details(vehicle, vehicle_offsets)
+                        print('{0} has exited'.format(car_id))
+                        # log the car information
+                visible_cars = {car_id: vehicle for (car_id, vehicle) in visible_cars.items() if vehicle.updated}
 
-            # if new_vehicle: ipdb.set_trace()
-# ########
-            # remove all vehicles for which we didn't see any new blobs
-            visible_cars = {car_id: vehicle for (car_id, vehicle) in visible_cars.items() if vehicle.updated}
+                if len(visible_cars) != num_visible:
+                    num_visible = len(visible_cars)
+                    log_density(num_visible, frame_count / FRAMES_PER_SECOND)
 
+    # ########
+
+            # display information for cars that are still visible
             for car_id, vehicle in visible_cars.items():
                 # reset vehicle to not updated
                 vehicle.updated = False
@@ -220,49 +234,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-# ###################################################
-                #                 # TODO: delete current behavior for all vehicles
-                #                 raw_current_frame_centers.append(raw_center)
-                #                 transformed_current_frame_centers.append([t_cX, t_cY])
-
-                #                 # draw the contour and center of the shape on the image
-                #                 cv2.drawContours(img, [c], -1, (0, 0, 204), 2)
-                #                 cv2.circle(img, (r_cX, r_cY), 7, (0, 0, 204), -1)
-
-                #                 # separate into new vehicles
-                # transformed_current_frame_centers = np.array([transformed_current_frame_centers])
-
-                # # birds-eye
-                # if bird_eye_preview and len(transformed_current_frame_centers) > 0:
-                #     for x, y in transformed_current_frame_centers[0]:
-                #         cv2.circle(transformed_output, (int(x), int(y)), 10, (0, 0, 0), -1)
-
-                # car_map = match_centers_across_frames([raw_current_frame_centers],
-                #                                     [raw_previous_frame_centers],
-                #                                     transformed_current_frame_centers,
-                #                                     transformed_previous_frame_centers,
-                #                                     FRAMES_FOR_SPEED,
-                #                                     SPEED_SCALING_FACTOR)  # need to return velocities of vehicles (speed + direction)
-
-                # # put velocities on the original image
-                # for key in car_map:
-                #     if car_map[key] == None: continue
-                #     raw_center, transformed_center, speed, raw_parametrized_direction, transformed_parametrized_direction = car_map[key]
-                #     r_cX, r_cY = raw_center
-                #     r_Dx, r_Dy = raw_parametrized_direction
-                #     t_cX, t_cY = transformed_center
-                #     t_Dx, t_Dy = transformed_parametrized_direction
-
-                #     if speed != float('inf'):
-
-                #         cv2.putText(img, "{0} mph".format(round(speed)), (r_cX - 20, r_cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 100), 2)
-                #         cv2.arrowedLine(img, (r_cX, r_cY), (int(r_cX + r_Dx), int(r_cY + r_Dy)), (0,0,100),2)
-                #         # birds-eye
-                #         if bird_eye_preview: cv2.arrowedLine(transformed_output, (int(t_cX), int(t_cY)), (int(t_cX + t_Dx), int(t_cY + t_Dy)), (0,0,0),2)
-
-                # transformed_previous_frame_centers = transformed_current_frame_centers
-                # raw_previous_frame_centers = raw_current_frame_centers
-# #######################################################
