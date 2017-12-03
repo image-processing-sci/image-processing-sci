@@ -154,7 +154,7 @@ def main():
                                     # flow log here
                                     log_flow_timestamp(frame_count / FRAMES_PER_SECOND)
 
-                                elif visible_cars and i < len(visible_cars):
+                                elif visible_cars and i <= len(visible_cars):
 
                                     # VEHICLE PREVIOUSLY VISIBLE: match with previous entry in visible_cars
                                     car_id, vehicle = match_center_to_car(transformed_center[0][0], visible_cars)
@@ -173,6 +173,7 @@ def main():
                     if not vehicle.updated:
                         log_car_details(vehicle)
                         print('{0} has exited'.format(car_id))
+                        # import ipdb; ipdb.set_trace()
                         # log the car information
                 visible_cars = {car_id: vehicle for (car_id, vehicle) in visible_cars.items() if vehicle.updated}
 
