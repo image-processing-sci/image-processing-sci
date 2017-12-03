@@ -2,7 +2,6 @@ import plotly
 from plotly.graph_objs import Scatter, Layout
 import pickle
 
-# import ipdb; ipdb.set_trace()
 
 def plot_densities():
     global_densities = pickle.load(open("global_densities.p", "rb"))
