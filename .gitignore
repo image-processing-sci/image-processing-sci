@@ -107,3 +107,6 @@ big_files/
 __pycache__/
 .*
 temp-plot.html
+log_attributes_finished.p
+log_attributes.p
+
