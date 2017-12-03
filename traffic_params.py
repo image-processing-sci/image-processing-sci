@@ -1,8 +1,8 @@
 import cv2
+import pickle
 import numpy as np
 from transformation import transform
 from car import Car
-import pickle
 from graphview.graphview import plot_logs
 import argparse
 
@@ -15,10 +15,9 @@ def calc_euclidean_distance(current_center, previous_center):
 
 
 def transformToBirdsEye(raw_center, transformation_matrix, preview = False):
-    # generate output canvas
-    # apply t_mat to the centers
     if not raw_center:
         return []
+    # apply t_mat to the centers
     transformed_center = cv2.perspectiveTransform(np.array([raw_center], dtype=float), transformation_matrix)
     return transformed_center
 
@@ -50,10 +49,8 @@ def log_car_details(vehicle):
 def log_density_and_avg_speed_or_offset(num_vehicles, avg_speed, avg_offset, timestamp):
     log_attributes['num_vehicles'].append(num_vehicles)
     log_attributes['timestamps'].append(timestamp)
-    log_attributes['num_vehicles'].append(num_vehicles)
     log_attributes['average_speed'].append(avg_speed)
     log_attributes['average_offset'].append(avg_offset)
-    log_attributes['timestamps'].append(timestamp)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -81,7 +78,6 @@ def main():
 
     # background subtraction
     fgbg = cv2.createBackgroundSubtractorMOG2(varThreshold=100, detectShadows=False)
-    # detector = cv2.SimpleBlobDetector_create()
 
     # background image we're doing right
     background = cv2.imread('big_files/background.png', 0)
@@ -97,9 +93,11 @@ def main():
 
     # open transformation calibration checkerboard image
     checkerboard_image = cv2.imread('betterCheckb.png')
+
     # calculate transformation matrix
     transformation_matrix, _ = transform(checkerboard_image)
     transformed_background = cv2.warpPerspective(background, transformation_matrix, (2000, 2000))
+
     # draw lane lines on background
     for l in LANE_LINES:
         cv2.line(transformed_background, (l, 0), (l, 2000), (0, 0, 0), 3)
@@ -114,6 +112,7 @@ def main():
 
     # transformed_output = transformed_background
     first_t_plot = True
+
     # loop through frames of video
     while True:
         # capture current frame in video
@@ -128,6 +127,7 @@ def main():
                     if retain_trajectories: first_t_plot = False
 
                 imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
                 # use the background subtractor
                 fgbg.apply(background)
                 fgmask = fgbg.apply(imgray)
@@ -149,6 +149,7 @@ def main():
                     # compute the center of the contour
                     if area > BLOB_AREA_THRESHOLD:
                         M = cv2.moments(c)
+
                         # prevent divide by zer0
                         if M["m00"] != 0.0:
                             r_cX = int(M["m10"] / M["m00"])
@@ -168,7 +169,7 @@ def main():
                                     # flow log here
                                     log_flow_timestamp(frame_count / FRAMES_PER_SECOND)
 
-                                elif visible_cars and i < len(visible_cars):
+                                elif visible_cars and i <= len(visible_cars):
 
                                     # VEHICLE PREVIOUSLY VISIBLE: match with previous entry in visible_cars
                                     car_id, vehicle = match_center_to_car(transformed_center[0][0], visible_cars)
@@ -193,6 +194,7 @@ def main():
             speed_sum = 0
             offset_sum = 0
             num_valid_vehicles = 0
+
             # display information for cars that are still visible
             for car_id, vehicle in visible_cars.items():
                 # reset vehicle to not updated
