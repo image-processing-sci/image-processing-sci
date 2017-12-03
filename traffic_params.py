@@ -109,11 +109,6 @@ def main():
     # keep a cache of the previous frame centers
     frame_count = 0
 
-    # preview settings
-    # bird_eye_preview = True
-    # blob_preview = False
-    # retain_trajectories = True
-
     visible_cars = {}
     vehicle_id = 0
 
