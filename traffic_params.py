@@ -113,13 +113,16 @@ def main():
 
     # preview settings
     bird_eye_preview = True
-    blob_preview = True
+    blob_preview = False
+    retain_trajectories = True
 
     visible_cars = {}
     num_visible = -1
     vehicle_id = 0
     log_object = None
 
+    # transformed_output = transformed_background
+    first_t_plot = True
     # loop through frames of video
     while True:
         # capture current frame in video
@@ -129,7 +132,9 @@ def main():
             if frame_count % FRAMES_FOR_SPEED == 0:
 
                 # birds-eye
-                if bird_eye_preview: transformed_output = transformed_background.copy()
+                if bird_eye_preview and first_t_plot:
+                    transformed_output = transformed_background.copy()
+                    if retain_trajectories: first_t_plot = False
 
                 imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 # use the background subtractor
@@ -237,8 +242,9 @@ def main():
                 cv2.arrowedLine(img, (r_pX, r_pY), (r_cX, r_cY), (0,0,100),2)
 
                 if bird_eye_preview:
-                    cv2.circle(transformed_output, (int(t_cX), int(t_cY)), 10, (0, 0, 0), -1)
-                    cv2.arrowedLine(transformed_output, (int(t_cX), int(t_cY)), (int(t_pX), int(t_pY)), (0,0,0),2)
+                    # cv2.line(transformed_output, (int(t_cX), int(t_cY)), )
+                    cv2.circle(transformed_output, (int(t_cX), int(t_cY)), 3, (0, 0, 0), -1)
+                    cv2.line(transformed_output, (int(t_cX), int(t_cY)), (int(t_pX), int(t_pY)), (0,0,0),2)
 
 
 
