@@ -4,9 +4,9 @@ import numpy as np
 from transformation import transform
 from car import Car
 from graphview.graphview import plot_logs
+import argparse
 
 log_attributes = {'num_vehicles': [], 'timestamps': [], 'flow_timestamps': [], 'average_speed': [], 'average_offset': []}
-
 
 def calc_euclidean_distance(current_center, previous_center):
     x1, y1 = current_center
@@ -53,6 +53,25 @@ def log_density_and_avg_speed_or_offset(num_vehicles, avg_speed, avg_offset, tim
     log_attributes['average_offset'].append(avg_offset)
 
 def main():
+    parser = argparse.ArgumentParser()
+
+    # preview settings
+    bird_eye_preview = False
+    blob_preview = False
+    retain_trajectories = False
+
+    parser.add_argument("-bird_eye_preview", action='store_true', help="birds_eye_preview is true")
+    parser.add_argument("-blob_preview", action='store_true', help="blob_preview is true")
+    parser.add_argument("-retain_trajectories", action='store_true', help="retain_trajectories is true")
+
+    args = parser.parse_args()
+
+    if args.bird_eye_preview:
+        bird_eye_preview = True
+    if args.blob_preview:
+        blob_preview = True
+    if args.retain_trajectories:
+        retain_trajectories = True
 
     # Open the video
     capture = cv2.VideoCapture('big_files/final.mp4')
@@ -87,11 +106,6 @@ def main():
 
     # keep a cache of the previous frame centers
     frame_count = 0
-
-    # preview settings
-    bird_eye_preview = True
-    blob_preview = False
-    retain_trajectories = True
 
     visible_cars = {}
     vehicle_id = 0
