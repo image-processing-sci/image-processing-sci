@@ -6,7 +6,7 @@ from car import Car
 from graphview.graphview import plot_logs
 import argparse
 
-log_attributes = {'num_vehicles': [], 'timestamps': [], 'flow_timestamps': [], 'average_speed': [], 'average_offset': []}
+log_attributes = {'Vehicles per 160ft': [], 'Time (s)': [], 'Flow Times (s)': [], 'Avg Speed (mph)': [], 'Avg Offset (ft)': []}
 
 def calc_euclidean_distance(current_center, previous_center):
     x1, y1 = current_center
@@ -41,16 +41,16 @@ def match_center_to_car(transformed_center, visible_cars):
 
 
 def log_flow_timestamp(timestamp):
-    log_attributes['flow_timestamps'].append(timestamp)
+    log_attributes['Flow Times (s)'].append(timestamp)
 
 def log_car_details(vehicle):
     pass
 
 def log_density_and_avg_speed_or_offset(num_vehicles, avg_speed, avg_offset, timestamp):
-    log_attributes['num_vehicles'].append(num_vehicles)
-    log_attributes['timestamps'].append(timestamp)
-    log_attributes['average_speed'].append(avg_speed)
-    log_attributes['average_offset'].append(avg_offset)
+    log_attributes['Vehicles per 160ft'].append(num_vehicles)
+    log_attributes['Time (s)'].append(timestamp)
+    log_attributes['Avg Speed (mph)'].append(avg_speed)
+    log_attributes['Avg Offset (ft)'].append(avg_offset)
 
 def main():
     parser = argparse.ArgumentParser()

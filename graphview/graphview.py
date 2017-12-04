@@ -7,57 +7,57 @@ from scipy import interpolate
 
 def plot_logs():
     try:
-        log_attributes = pickle.load(open("log_attributes_finished.p", "rb"))
+        log_attributes = pickle.load(open('log_attributes_finished.p', 'rb'))
     except:
-        log_attributes = pickle.load(open("log_attributes.p", "rb"))
+        log_attributes = pickle.load(open('log_attributes.p', 'rb'))
 
-    flow_y = list(range(0, len(log_attributes["flow_timestamps"])))
+    flow_y = list(range(0, len(log_attributes['Flow Times (s)'])))
 
     #TODO: Figure out how to add titles to the graphs
 
     # 2d plot
     densities = go.Scatter(
-        x=log_attributes["timestamps"],
-        y=log_attributes["num_vehicles"],
-        name="Density"
+        x=log_attributes['Time (s)'],
+        y=log_attributes['Vehicles per 160ft'],
+        name='Density'
     )
 
     # 2d plot
     flow = go.Scatter(
-        x=log_attributes["flow_timestamps"],
+        x=log_attributes['Flow Times (s)'],
         y=flow_y,
         xaxis='x2',
         yaxis='y2',
-        name="Flow"
+        name='Flow'
     )
 
     # 3d plot processing
     time_vs_offset_vs_speed_data = go.Scatter3d(
-        x=log_attributes['timestamps'], y=log_attributes['average_offset'], z=log_attributes['average_speed'],
+        x=log_attributes['Time (s)'], y=log_attributes['Avg Offset (ft)'], z=log_attributes['Avg Speed (mph)'],
         marker=dict(
             size=5,
-            color=log_attributes['average_speed'],
+            color=log_attributes['Avg Speed (mph)'],
             colorscale='Viridis',  # choose a colorscale
             opacity=0.8
         ),
         scene='scene1',
         # surfaceaxis=2,
         # surfacecolor='red'
-        name="Offset vs Speed"
+        name='Offset vs Speed'
     )
 
     time_vs_offset_vs_density_data = go.Scatter3d(
-        x=log_attributes['timestamps'], y=log_attributes['average_offset'], z=log_attributes['num_vehicles'],
+        x=log_attributes['Time (s)'], y=log_attributes['Avg Offset (ft)'], z=log_attributes['Vehicles per 160ft'],
         marker=dict(
             size=5,
-            color=log_attributes['num_vehicles'],
+            color=log_attributes['Vehicles per 160ft'],
             # colorscale='Viridis',  # choose a colorscale
             opacity=0.8
         ),
         scene='scene2',
         # surfaceaxis=2,
         # surfacecolor='red',
-        name="Offset vs Density"
+        name='Offset vs Density'
     )
 
     data = [flow, densities, time_vs_offset_vs_speed_data, time_vs_offset_vs_density_data] #, time_vs_speed_vs_density_data]
@@ -107,8 +107,8 @@ def plot_logs():
     fig = go.Figure(data=data, layout=layout)
     py.offline.plot(fig, filename='density_offset_graphs.html')
 
-    plot3d('timestamps', 'average_offset', 'average_speed', log_attributes, 'speed_vs_offset')
-    plot3d('timestamps', 'num_vehicles', 'average_speed', log_attributes, 'speed_vs_density')
+    plot3d('Time (s)', 'Avg Offset (ft)', 'Avg Speed (mph)', log_attributes, 'speed_vs_offset')
+    plot3d('Time (s)', 'Vehicles per 160ft', 'Avg Speed (mph)', log_attributes, 'speed_vs_density')
 
 
 def plot3d(x_label, y_label, z_label, log_attributes, outputname):
