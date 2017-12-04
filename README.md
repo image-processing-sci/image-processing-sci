@@ -19,9 +19,13 @@ Note: This repository doesn't contain any proprietary information/videos. For th
 
 5) In the root of the folder, use the following command to get up and running
 
-    `python3 background_subtractor.py`
+    `python3 traffic_params.py`
 
-Voila, you should see some windows of the processed videos.
+    Voila, you should see some windows of the processed videos.
+
+6) To stop the video, simply hit the space bar. The script will autogenerate html pages to display the results. Since these pages are stored on the drive, you can also see them without having to run the main script every time. For this, use the following command:
+
+    `python3 graphview/graphview.py`
 
 # Contributing
 
