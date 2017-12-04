@@ -107,11 +107,14 @@ def plot_logs():
     fig = go.Figure(data=data, layout=layout)
     py.offline.plot(fig, filename='density_offset_graphs.html')
 
-    plot3d(log_attributes['timestamps'], log_attributes['average_offset'], log_attributes['average_speed'], 'speed_vs_offset')
-    plot3d(log_attributes['timestamps'], log_attributes['num_vehicles'], log_attributes['average_speed'], 'speed_vs_density')
+    plot3d('timestamps', 'average_offset', 'average_speed', log_attributes, 'speed_vs_offset')
+    plot3d('timestamps', 'num_vehicles', 'average_speed', log_attributes, 'speed_vs_density')
 
 
-def plot3d(x, y, z, outputname):
+def plot3d(x_label, y_label, z_label, log_attributes, outputname):
+    x = log_attributes[x_label]
+    y = log_attributes[y_label]
+    z = log_attributes[z_label]
     # import ipdb; ipdb.set_trace()
     x = np.round(np.asarray(x))
     y = np.round(np.asarray(y))
@@ -135,6 +138,17 @@ def plot3d(x, y, z, outputname):
             r=0,
             b=0,
             t=0
+        ),
+        scene=dict(
+            xaxis=dict(
+                title=x_label
+            ),
+            yaxis=dict(
+                title=y_label
+            ),
+            zaxis = dict(
+                title=z_label
+            )
         )
     )
     time_vs_offset_vs_speed_data = go.Figure(data=data, layout=layout)
