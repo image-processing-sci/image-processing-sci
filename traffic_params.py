@@ -230,9 +230,10 @@ def main():
                     cv2.circle(transformed_output, (int(t_cX), int(t_cY)), 3, (0, 0, 0), -1)
                     cv2.line(transformed_output, (int(t_cX), int(t_cY)), (int(t_pX), int(t_pY)), (0,0,0),2)
 
-            avg_speed = speed_sum / num_valid_vehicles if num_valid_vehicles != 0 else -1
-            avg_offset = offset_sum / num_valid_vehicles if num_valid_vehicles != 0 else -1
-            log_density_and_avg_speed_or_offset(num_valid_vehicles, avg_speed, avg_offset, frame_count / FRAMES_PER_SECOND)
+            if num_valid_vehicles != 0:
+                avg_speed = speed_sum / num_valid_vehicles
+                avg_offset = offset_sum / num_valid_vehicles
+                log_density_and_avg_speed_or_offset(num_valid_vehicles, avg_speed, avg_offset, frame_count / FRAMES_PER_SECOND)
 
             cv2.imshow("original footage with blob/centroid", img)
             # birds-eye

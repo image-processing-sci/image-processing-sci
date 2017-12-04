@@ -4,10 +4,10 @@ import pickle
 
 
 def plot_logs():
-    try:
-        log_attributes = pickle.load(open("log_attributes_finished.p", "rb"))
-    except:
-        log_attributes = pickle.load(open("log_attributes.p", "rb"))
+    # try:
+    #     log_attributes = pickle.load(open("log_attributes_finished.p", "rb"))
+    # except:
+    log_attributes = pickle.load(open("log_attributes.p", "rb"))
 
     flow_y = list(range(0, len(log_attributes["flow_timestamps"])))
 
@@ -53,14 +53,27 @@ def plot_logs():
             opacity=0.8
         ),
         scene='scene2',
-        surfaceaxis=2,
-        surfacecolor='red',
+        # surfaceaxis=2,
+        # surfacecolor='red',
         name="Offset vs Density"
     )
 
-    data = [flow, densities, time_vs_offset_vs_speed_data, time_vs_offset_vs_density_data]
+    time_vs_speed_vs_density_data = go.Scatter3d(
+        x=log_attributes['timestamps'], y=log_attributes['average_speed'], z=log_attributes['num_vehicles'],
+        marker=dict(
+            size=5,
+            color=log_attributes['num_vehicles'],
+            # colorscale='Viridis',  # choose a colorscale
+            opacity=0.8
+        ),
+        scene='scene3',
+        # surfaceaxis=2,
+        # surfacecolor='green',
+        name="Speed vs Density"
+    )
+
+    data = [flow, densities, time_vs_offset_vs_speed_data, time_vs_offset_vs_density_data, time_vs_speed_vs_density_data]
     layout = go.Layout(
-        title='asdasd',
         xaxis=dict(
             domain=[0, 0.45],
             title='Time (s)'
@@ -100,7 +113,19 @@ def plot_logs():
             yaxis=dict(
                 title='Offset (ft)'),
             zaxis=dict(
+                title='Density (vehicles/160 ft)'),
+        ),
+        scene3=dict(
+            domain=dict(
+                x=[-1, -0.5],
+                y=[1, 0],
+            ),
+            xaxis=dict(
+                title='Time (s)'),
+            yaxis=dict(
                 title='Speed (mph)'),
+            zaxis=dict(
+                title='Density (vehicles/160 ft)'),
         )
     )
     fig = go.Figure(data=data, layout=layout)
