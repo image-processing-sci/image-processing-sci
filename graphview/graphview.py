@@ -53,8 +53,8 @@ def plot_logs():
             opacity=0.8
         ),
         scene='scene2',
-        # surfaceaxis=2,
-        # surfacecolor='red',
+        surfaceaxis=2,
+        surfacecolor='red',
         name="Offset vs Density"
     )
 
